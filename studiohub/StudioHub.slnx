@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StudioHub.Core/StudioHub.Core.csproj" />
+    <Project Path="src/StudioHub.DevServer/StudioHub.DevServer.csproj" />
+    <Project Path="src/StudioHub/StudioHub.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StudioHub.Core.Tests/StudioHub.Core.Tests.csproj" />
+  </Folder>
+</Solution>

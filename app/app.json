@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "DeckPad",
+    "slug": "deckpad",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A1428",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A1428"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.deckpad.app",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "DeckPad, aynı ağdaki OBS'e bağlanmak için yerel ağa erişir."
+      }
+    },
+    "android": {
+      "package": "dev.deckpad.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1A2D52",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "DeckPad, OBS'teki bağlantı QR kodunu okumak için kamerayı kullanır.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "buildArchs": [
+              "arm64-v8a"
+            ]
+          }
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}
