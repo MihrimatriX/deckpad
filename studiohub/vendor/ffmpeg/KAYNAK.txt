@@ -1,0 +1,7 @@
+FFmpeg 9.0.2 "essentials" Windows derlemesi (www.gyan.dev)
+Lisans: GPL v3 (LICENSE.txt)
+Kaynak kodu: https://github.com/FFmpeg/FFmpeg/commit/946fcce07b
+Derleme ayrıntıları: https://www.gyan.dev/ffmpeg/builds/
+
+StudioHub bu programı yalnızca ayrı bir süreç olarak çalıştırır (CamLink'ten gelen SRT görüntüsünü çözmek için);
+FFmpeg StudioHub'a bağlanmaz ve değiştirilmeden dağıtılır.

@@ -1,0 +1,22 @@
+# DeckPad uygulaması kendi .gitignore'unu kullanır (app/.gitignore).
+
+# StudioHub derleme çıktıları
+studiohub/out/
+studiohub/src/**/bin/
+studiohub/src/**/obj/
+studiohub/tests/**/bin/
+studiohub/tests/**/obj/
+studiohub/.vs/
+*.user
+
+# Üretilen ya da indirilen dosyalar (scripts/hazirla.* üretir)
+studiohub/vendor/ffmpeg/ffmpeg.exe
+studiohub/web/panel/
+
+# Teslim paketleri
+*.zip
+*.apk
+*.aab
+
+.DS_Store
+Thumbs.db

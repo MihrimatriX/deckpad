@@ -1,0 +1,20 @@
+<Window x:Class="StudioHub.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="StudioHub" Width="1180" Height="860" MinWidth="560" MinHeight="480"
+        Background="{StaticResource Navy}" WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Assets/studiohub.ico">
+    <Grid>
+        <wv2:WebView2 x:Name="Web" />
+        <StackPanel x:Name="Fallback" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460">
+            <TextBlock Text="Arayüz açılamadı" FontFamily="{StaticResource KeyFont}" FontSize="28" FontWeight="Bold" Foreground="{StaticResource Text}" Margin="0,0,0,10" />
+            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="15" Margin="0,0,0,18"
+                       Text="Bu pencere Microsoft Edge WebView2 bileşenini kullanır ve bilgisayarda bulunamadı. StudioHub yine de çalışıyor; arayüzü tarayıcıda açabilir ya da WebView2'yi Microsoft'un sitesinden kurabilirsin." />
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="OpenBrowser" Content="Tarayıcıda aç" Padding="16,8" Margin="0,0,10,0" Click="OpenBrowser_Click" />
+                <Button x:Name="GetRuntime" Content="WebView2'yi indir" Padding="16,8" Click="GetRuntime_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>
