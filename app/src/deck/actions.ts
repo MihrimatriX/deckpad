@@ -5,7 +5,7 @@ import { isSpecialToken } from './model';
 export const ACTION_GROUPS: { title: string; types: DeckActionType[] }[] = [
   { title: 'Kayıt ve yayın', types: ['record', 'recordPause', 'stream', 'chapter', 'replaySave', 'replayBuffer', 'virtualCam'] },
   { title: 'Sahneler ve geçişler', types: ['scene', 'previewScene', 'studioTransition', 'studioMode', 'transition'] },
-  { title: 'Kaynaklar ve efektler', types: ['sourceVisibility', 'filter'] },
+  { title: 'Kaynaklar ve efektler', types: ['notify', 'sourceVisibility', 'filter'] },
   { title: 'Ses', types: ['mute', 'volume'] },
   { title: 'Ses efektleri ve slaytlar', types: ['media'] },
   { title: 'Bilgisayar (StudioHub)', types: ['pcSlide', 'pcKeys', 'pcMedia', 'pcVolume', 'pcLaunch', 'pcUrl', 'pcText'] },
@@ -65,6 +65,12 @@ export const ACTION_META: Record<DeckActionType, Meta> = {
     label: 'Geçiş türünü seç',
     icon: 'git-compare',
     create: () => ({ type: 'transition', name: '' }),
+  },
+  notify: {
+    label: 'Ekrana yazı göster',
+    icon: 'notifications',
+    hint: 'Yayında birkaç saniyelik bildirim',
+    create: () => ({ type: 'notify', text: '', seconds: 5 }),
   },
   sourceVisibility: {
     label: 'Kaynağı göster/gizle',
@@ -215,6 +221,8 @@ export function describeAction(a: DeckAction, pageName: (id: string) => string):
       return `Studio Mode: ${m(a.mode)}`;
     case 'media':
       return `${a.input || missing}: ${m(a.mode)}`;
+    case 'notify':
+      return `Bildirim: ${a.text ? (a.text.length > 28 ? a.text.slice(0, 28) + '…' : a.text) : missing} · ${a.seconds} sn`;
     case 'replayBuffer':
       return `Replay Buffer: ${m(a.mode)}`;
     case 'replaySave':
@@ -269,6 +277,7 @@ export function actionIncomplete(a: DeckAction): boolean {
     case 'pcKeys':
       return !a.keys.trim();
     case 'pcText':
+    case 'notify':
       return !a.text;
     case 'pcLaunch':
       return !a.path.trim();

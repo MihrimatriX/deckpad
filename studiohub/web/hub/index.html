@@ -18,123 +18,79 @@
         <div class="readout"><span class="readout-k">Bilgisayar</span><span class="readout-v" id="d-name">…</span></div>
         <div class="readout"><span class="readout-k">Adres</span><span class="readout-v mono" id="d-ip">…</span></div>
         <div class="readout"><span class="led" id="d-phones-led"></span><span class="readout-v" id="d-phones">Telefon yok</span></div>
-        <div class="readout"><span class="led" id="d-cam-led"></span><span class="readout-v" id="d-cam">Webcam kapalı</span></div>
         <div class="readout"><span class="led" id="d-obs-led"></span><span class="readout-v" id="d-obs">OBS</span></div>
       </div>
     </header>
 
     <main class="grid">
-      <!-- Eşleştirme -->
-      <section class="plate" aria-labelledby="t-pair">
+      <!-- Ana iş: telefonu bağlamak. Başka hiçbir şey QR'ın önüne geçmez. -->
+      <section class="plate pair" aria-labelledby="t-pair">
         <h2 id="t-pair">Telefonu bağla</h2>
-        <div class="pair">
-          <div class="qr-bezel"><div class="qr" id="qr" role="img" aria-label="Eşleştirme QR kodu"></div></div>
-          <div class="pair-text">
-            <p>Telefonda <b>DeckPad</b> ya da <b>CamLink</b>'i aç, <b>Bilgisayarı bağla</b>'ya dokun ve bu kodu okut.</p>
-            <p class="muted">Kod bilgisayarın adresini, bilgisayar eylemleri için eşleştirme anahtarını ve OBS bağlantı bilgisini taşır. Telefon ile bilgisayar aynı Wi‑Fi ağında olmalı.</p>
+        <div class="qr-bezel"><div class="qr" id="qr" role="img" aria-label="Eşleştirme QR kodu"></div></div>
+        <ol class="steps">
+          <li>Telefonda <b>DeckPad</b>'i aç.</li>
+          <li>Bu kodu okut. Hepsi bu.</li>
+        </ol>
+        <p class="muted small">Telefon ile bilgisayar aynı Wi‑Fi ağında olmalı.</p>
+      </section>
+
+      <div class="side">
+        <section class="plate" aria-labelledby="t-obs">
+          <h2 id="t-obs">OBS</h2>
+          <div class="status-row big"><span class="led" id="obs-led"></span><span id="obs-text">…</span></div>
+          <div class="notice" id="obs-notice" hidden></div>
+          <div class="row">
+            <button class="key key-primary" id="obs-setup" data-act="obs-setup">OBS'i hazırla</button>
+            <button class="key key-secondary" id="obs-launch" data-act="obs-launch">OBS'i aç</button>
+          </div>
+        </section>
+
+        <section class="plate" aria-labelledby="t-clients">
+          <h2 id="t-clients">Bağlı cihazlar</h2>
+          <div class="well clients" id="clients"></div>
+          <div class="row">
+            <button class="key key-secondary" data-act="panel-open">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              Masaüstü panelini aç
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <details class="plate wide advanced">
+        <summary><h2>Gelişmiş</h2><span class="muted small">Adres, elle bağlanma, OBS ayrıntıları, ayarlar</span></summary>
+
+        <div class="adv-grid">
+          <div>
             <label class="field-label" for="ip-select">Telefonların bağlanacağı adres</label>
             <div class="well select-well"><select id="ip-select"></select></div>
+            <span class="field-label">QR okutamazsan elle gir</span>
+            <dl class="glass-table" id="manual">
+              <dt>Bilgisayar eylemleri</dt><dd class="mono" id="m-hub">…</dd>
+              <dt>Eşleştirme anahtarı</dt><dd class="mono"><span id="m-token" class="secret">••••••••••</span><button class="text-key" data-act="reveal" id="m-reveal">Göster</button></dd>
+              <dt>OBS WebSocket</dt><dd class="mono" id="m-ws">…</dd>
+            </dl>
             <div class="row">
-              <button class="key key-secondary" data-act="regen">
+              <button class="key key-small key-secondary" data-act="regen">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
                 Kodu yenile
               </button>
+              <span class="muted small">Eşleşmiş telefonlar kodu yeniden okutmalı.</span>
             </div>
           </div>
-        </div>
-        <span class="field-label">QR okutamazsan elle gir</span>
-        <dl class="glass-table" id="manual">
-          <dt>DeckPad bilgisayar eylemleri</dt><dd class="mono" id="m-hub">…</dd>
-          <dt>Eşleştirme anahtarı</dt><dd class="mono"><span id="m-token" class="secret">••••••••••</span><button class="text-key" data-act="reveal" id="m-reveal">Göster</button></dd>
-          <dt>CamLink, OBS'siz webcam</dt><dd class="mono" id="m-webcam">…</dd>
-          <dt>CamLink, OBS kaynağı</dt><dd class="mono" id="m-srt">…</dd>
-          <dt>OBS WebSocket</dt><dd class="mono" id="m-ws">…</dd>
-        </dl>
-      </section>
 
-      <!-- Webcam -->
-      <section class="plate" aria-labelledby="t-cam">
-        <div class="plate-head">
-          <h2 id="t-cam">OBS'siz webcam</h2>
-          <button class="key key-primary" id="cam-toggle" data-act="cam-toggle">Başlat</button>
-        </div>
-        <div class="monitor" id="monitor">
-          <img id="preview" alt="Telefon kamerasının önizlemesi" hidden>
-          <div class="monitor-idle" id="monitor-idle">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>
-            <span id="monitor-text">Alıcı kapalı</span>
-          </div>
-          <div class="tally" id="tally"><span class="led"></span><span id="tally-text">Bekliyor</span></div>
-        </div>
-        <p class="muted small" id="cam-hint">CamLink'te hedef olarak <b>Bilgisayar (OBS'siz)</b> seç. Zoom, Discord, Teams ve tarayıcıda kamera olarak <b id="cam-name">CamLink Kamera</b>'yı seç.</p>
-        <div class="controls">
           <div>
-            <span class="field-label">Çözünürlük</span>
-            <div class="chips" id="res-chips">
-              <button class="chip" data-res="1280x720">720p</button>
-              <button class="chip" data-res="1920x1080">1080p</button>
-              <button class="chip" data-res="640x360">360p</button>
-            </div>
-          </div>
-          <div>
-            <span class="field-label">Kare hızı</span>
-            <div class="chips" id="fps-chips">
-              <button class="chip" data-fps="30">30</button>
-              <button class="chip" data-fps="60">60</button>
-            </div>
-          </div>
-        </div>
-        <div class="toggles">
-          <label class="toggle"><input type="checkbox" id="opt-mirror"><span class="switch"></span>Aynala</label>
-          <label class="toggle"><input type="checkbox" id="opt-flip"><span class="switch"></span>Ters çıkarsa çevir</label>
-        </div>
-        <div class="status-row" id="driver-row">
-          <span class="led" id="driver-led"></span>
-          <span id="driver-text">Sanal kamera sürücüsü</span>
-          <button class="key key-small key-secondary" id="driver-btn" data-act="driver">Kur</button>
-        </div>
-      </section>
-
-      <!-- OBS -->
-      <section class="plate" aria-labelledby="t-obs">
-        <h2 id="t-obs">OBS'i hazırla</h2>
-        <p class="muted">DeckPad'in OBS'e bağlanması ve CamLink kaynaklarının tek tıkla eklenmesi için gereken ayarlar. OBS kapalıyken yazılır.</p>
-        <ul class="checklist" id="obs-list">
-          <li data-step="websocket"><span class="led"></span><span class="ck-title">WebSocket sunucusu</span><span class="ck-state"></span></li>
-          <li data-step="dock"><span class="led"></span><span class="ck-title">DeckPad paneli</span><span class="ck-state"></span></li>
-          <li data-step="plugin"><span class="led"></span><span class="ck-title">CamLink eklentisi</span><span class="ck-state"></span></li>
-          <li data-step="script"><span class="led"></span><span class="ck-title">Kurulum betiği</span><span class="ck-state"></span></li>
-        </ul>
-        <div class="notice" id="obs-notice" hidden></div>
-        <div class="row">
-          <button class="key key-primary" id="obs-setup" data-act="obs-setup">OBS'i hazırla</button>
-          <button class="key key-secondary" id="obs-launch" data-act="obs-launch">OBS'i aç</button>
-        </div>
-      </section>
-
-      <!-- DeckPad -->
-      <section class="plate" aria-labelledby="t-deck">
-        <h2 id="t-deck">DeckPad</h2>
-        <div class="deck-actions">
-          <button class="bigkey" data-act="panel-open">
-            <span class="bigkey-face">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><rect x="6" y="7" width="4" height="3" rx=".6"/><rect x="11" y="7" width="4" height="3" rx=".6"/><rect x="6" y="11" width="4" height="3" rx=".6"/><rect x="11" y="11" width="4" height="3" rx=".6"/></svg>
-              <span>Masaüstü panelini aç</span>
-            </span>
-          </button>
-          <div class="deck-info">
-            <p class="muted">Telefondaki DeckPad, bilgisayarda tuş kısayolu, slayt, medya ve ses eylemlerini buradan çalıştırır. Tuş düzenini telefondan bilgisayara gönderirsen masaüstü paneli ve OBS paneli aynı düzeni kullanır.</p>
+            <span class="field-label">OBS ayrıntıları</span>
+            <ul class="checklist" id="obs-list">
+              <li data-step="websocket"><span class="led"></span><span class="ck-title">WebSocket sunucusu</span><span class="ck-state"></span></li>
+              <li data-step="dock"><span class="led"></span><span class="ck-title">DeckPad paneli</span><span class="ck-state"></span></li>
+              <li data-step="script"><span class="led"></span><span class="ck-title">Kurulum betiği</span><span class="ck-state"></span></li>
+            </ul>
             <span class="field-label">OBS paneli adresi</span>
             <div class="well copy-well"><code id="dock-url">…</code><button class="icon-key" data-act="copy-dock" aria-label="Adresi kopyala"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button></div>
           </div>
         </div>
-        <span class="field-label">Bağlı cihazlar</span>
-        <div class="well clients" id="clients"></div>
-      </section>
 
-      <!-- Ayarlar -->
-      <section class="plate wide" aria-labelledby="t-settings">
-        <h2 id="t-settings">Ayarlar</h2>
         <div class="settings">
           <div class="setting">
             <label class="field-label" for="s-name">Telefonlarda görünen ad</label>
@@ -151,21 +107,20 @@
               <button class="key key-small key-secondary" data-act="firewall">İzin ver</button>
             </div>
           </div>
-        </div>
-        <details class="advanced">
-          <summary>Portlar</summary>
-          <div class="ports">
-            <div><label class="field-label" for="p-hub">StudioHub (TCP)</label><div class="well input-well"><input id="p-hub" inputmode="numeric"></div></div>
-            <div><label class="field-label" for="p-webcam">Webcam (UDP, SRT)</label><div class="well input-well"><input id="p-webcam" inputmode="numeric"></div></div>
-            <div><label class="field-label" for="p-srt">OBS kamera (UDP, SRT)</label><div class="well input-well"><input id="p-srt" inputmode="numeric"></div></div>
-            <div><label class="field-label" for="p-ws">OBS WebSocket (TCP)</label><div class="well input-well"><input id="p-ws" inputmode="numeric"></div></div>
+          <div class="setting">
+            <label class="field-label" for="p-hub">StudioHub portu (TCP)</label>
+            <div class="well input-well"><input id="p-hub" inputmode="numeric"></div>
           </div>
-        </details>
+          <div class="setting">
+            <label class="field-label" for="p-ws">OBS WebSocket portu (TCP)</label>
+            <div class="well input-well"><input id="p-ws" inputmode="numeric"></div>
+          </div>
+        </div>
         <div class="row">
           <button class="key key-primary" data-act="save-settings">Ayarları kaydet</button>
           <span class="muted small" id="version"></span>
         </div>
-      </section>
+      </details>
     </main>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden><span class="led"></span><span id="toast-text"></span></div>

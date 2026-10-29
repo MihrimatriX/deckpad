@@ -7,7 +7,7 @@ namespace StudioHub.Platform;
 
 /// <summary>
 /// "StudioHub.exe --elevated istek.json sonuc.json" ile yönetici olarak çalışan kısa ömürlü süreç.
-/// Sürücü kaydı, güvenlik duvarı kuralları ve eklenti kopyalama tek UAC onayıyla yapılır.
+/// Telefonların bağlanabilmesi için güvenlik duvarı kuralını ekler.
 /// </summary>
 public static class Elevated
 {
@@ -17,21 +17,7 @@ public static class Elevated
         try
         {
             var req = JsonSerializer.Deserialize<ElevatedRequest>(File.ReadAllText(requestPath))!;
-            if (req.InstallDriver) steps.Add(InstallDriver(req.DriverName ?? "CamLink Kamera"));
-            if (req.UninstallDriver) steps.Add(UninstallDriver());
-            if (req.FirewallTcp != null || req.FirewallUdp != null) steps.Add(Firewall(req.FirewallTcp ?? [], req.FirewallUdp ?? []));
-            if (req.PluginSource != null && req.PluginTarget != null)
-            {
-                try
-                {
-                    ObsConfigurator.CopyDir(req.PluginSource, req.PluginTarget);
-                    steps.Add(new SetupStep("plugin", "CamLink OBS eklentisi", true, "Kuruldu"));
-                }
-                catch (Exception e)
-                {
-                    steps.Add(new SetupStep("plugin", "CamLink OBS eklentisi", false, e.Message));
-                }
-            }
+            steps.Add(Firewall(req.FirewallTcp));
         }
         catch (Exception e)
         {
@@ -41,73 +27,21 @@ public static class Elevated
         return steps.All(s => s.Ok) ? 0 : 1;
     }
 
-    /// <summary>Sürücü kalıcı bir yere kopyalanır; böylece StudioHub klasörü taşınsa da kamera çalışır.</summary>
-    private static string DriverDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "StudioHub", "driver");
-
-    private static SetupStep InstallDriver(string name)
-    {
-        const string id = "driver", title = "Sanal kamera sürücüsü";
-        try
-        {
-            var src = Path.Combine(AppContext.BaseDirectory, "driver");
-            Directory.CreateDirectory(DriverDir);
-            foreach (var f in Directory.GetFiles(src)) File.Copy(f, Path.Combine(DriverDir, Path.GetFileName(f)), true);
-
-            var sys = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-            var reg64 = Path.Combine(sys, "System32", "regsvr32.exe");
-            var reg32 = Path.Combine(sys, "SysWOW64", "regsvr32.exe");
-            var arg = $"/i:UnityCaptureName={name}";
-            var c64 = Run(reg64, "/s", arg, Path.Combine(DriverDir, "UnityCaptureFilter64.dll"));
-            // 32 bit uygulamalar (bazı eski Zoom/Skype sürümleri) için de kaydedilir; başarısız olursa önemli değil.
-            if (File.Exists(reg32)) Run(reg32, "/s", arg, Path.Combine(DriverDir, "UnityCaptureFilter32.dll"));
-            return c64 == 0
-                ? new SetupStep(id, title, true, $"\"{name}\" kuruldu")
-                : new SetupStep(id, title, false, $"regsvr32 hata kodu {c64}");
-        }
-        catch (Exception e)
-        {
-            return new SetupStep(id, title, false, e.Message);
-        }
-    }
-
-    private static SetupStep UninstallDriver()
-    {
-        const string id = "driver", title = "Sanal kamera sürücüsü";
-        try
-        {
-            var sys = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-            var c = Run(Path.Combine(sys, "System32", "regsvr32.exe"), "/u", "/s", Path.Combine(DriverDir, "UnityCaptureFilter64.dll"));
-            var reg32 = Path.Combine(sys, "SysWOW64", "regsvr32.exe");
-            if (File.Exists(reg32)) Run(reg32, "/u", "/s", Path.Combine(DriverDir, "UnityCaptureFilter32.dll"));
-            return c == 0 ? new SetupStep(id, title, true, "Kaldırıldı") : new SetupStep(id, title, false, $"regsvr32 hata kodu {c}");
-        }
-        catch (Exception e)
-        {
-            return new SetupStep(id, title, false, e.Message);
-        }
-    }
-
     /// <summary>
-    /// Kurallar yalnızca aynı yerel ağdan gelen bağlantılara izin verir. Wi‑Fi "Ortak" olarak
+    /// Kural yalnızca aynı yerel ağdan gelen bağlantılara izin verir. Wi‑Fi "Ortak" olarak
     /// işaretli olsa da telefonlar bağlanabilsin diye tüm profillerde geçerlidir.
     /// </summary>
-    private static SetupStep Firewall(int[] tcp, int[] udp)
+    private static SetupStep Firewall(int[] tcp)
     {
-        const string id = "firewall", title = "Güvenlik duvarı";
+        const string id = "firewall", title = "Güvenlik duvarı", name = "StudioHub (TCP)";
         try
         {
-            var errors = new List<string>();
-            void Rule(string name, string proto, int[] ports)
-            {
-                if (ports.Length == 0) return;
-                Run("netsh", "advfirewall", "firewall", "delete", "rule", $"name={name}");
-                var code = Run("netsh", "advfirewall", "firewall", "add", "rule", $"name={name}", "dir=in", "action=allow",
-                    $"protocol={proto}", $"localport={string.Join(",", ports.Distinct())}", "remoteip=localsubnet", "profile=any");
-                if (code != 0) errors.Add($"{name}: netsh {code}");
-            }
-            Rule("StudioHub (TCP)", "TCP", tcp);
-            Rule("StudioHub (UDP)", "UDP", udp);
-            return errors.Count == 0 ? new SetupStep(id, title, true, "İzinler eklendi") : new SetupStep(id, title, false, string.Join(", ", errors));
+            // Eski sürümlerin webcam için açtığı UDP kuralı artık gerekmiyor.
+            Run("netsh", "advfirewall", "firewall", "delete", "rule", "name=StudioHub (UDP)");
+            Run("netsh", "advfirewall", "firewall", "delete", "rule", $"name={name}");
+            var code = Run("netsh", "advfirewall", "firewall", "add", "rule", $"name={name}", "dir=in", "action=allow",
+                "protocol=TCP", $"localport={string.Join(",", tcp.Distinct())}", "remoteip=localsubnet", "profile=any");
+            return code == 0 ? new SetupStep(id, title, true, "İzinler eklendi") : new SetupStep(id, title, false, $"{name}: netsh {code}");
         }
         catch (Exception e)
         {

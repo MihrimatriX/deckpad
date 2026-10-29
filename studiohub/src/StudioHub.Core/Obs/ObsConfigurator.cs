@@ -11,37 +11,31 @@ public sealed record ObsStatus(
     bool WebSocketEnabled,
     int? WebSocketPort,
     bool DockAdded,
-    bool PluginInstalled,
     bool ScriptAdded,
     string? SceneCollection);
 
 /// <summary>
-/// OBS kapalıyken yapılandırma dosyalarını düzenleyerek OBS'i DeckPad ve CamLink için hazırlar:
-/// WebSocket sunucusunu açar, DeckPad panelini ekler, CamLink eklentisini ve kurulum betiğini yerleştirir.
+/// OBS kapalıyken yapılandırma dosyalarını düzenleyerek OBS'i DeckPad için hazırlar:
+/// WebSocket sunucusunu açar, DeckPad panelini ekler ve kurulum betiğini yerleştirir.
 /// </summary>
 public sealed class ObsConfigurator
 {
     public const string DockTitle = "DeckPad";
     private readonly string _configDir;
-    private readonly string _pluginRoot;
     private readonly Func<bool> _isRunning;
 
     /// <param name="configDir">%APPDATA%\obs-studio</param>
-    /// <param name="pluginRoot">%ProgramData%\obs-studio\plugins</param>
-    public ObsConfigurator(string configDir, string pluginRoot, Func<bool> isRunning)
+    public ObsConfigurator(string configDir, Func<bool> isRunning)
     {
         _configDir = configDir;
-        _pluginRoot = pluginRoot;
         _isRunning = isRunning;
     }
 
     public static ObsConfigurator ForCurrentUser(Func<bool> isRunning) => new(
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "obs-studio"),
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "obs-studio", "plugins"),
         isRunning);
 
     public string ConfigDir => _configDir;
-    public string PluginDir => Path.Combine(_pluginRoot, "camlink");
     private string WebSocketConfig => Path.Combine(_configDir, "plugin_config", "obs-websocket", "config.json");
 
     /// <summary>OBS 31 ve sonrası pencere ayarlarını user.ini'de, öncekiler global.ini'de tutar.</summary>
@@ -64,7 +58,6 @@ public sealed class ObsConfigurator
             wsOn,
             wsPort,
             DockUrl() != null,
-            File.Exists(Path.Combine(PluginDir, "bin", "64bit", "camlink.dll")),
             ScriptPathInCollection() != null,
             CurrentSceneCollectionFile());
     }
@@ -106,7 +99,8 @@ public sealed class ObsConfigurator
         }
     }
 
-    private string? ExistingPassword()
+    /// <summary>OBS'in şu an kullandığı WebSocket şifresi (kimlik doğrulama kapalıysa ya da ayar yoksa null).</summary>
+    public string? ExistingPassword()
     {
         try
         {
@@ -206,40 +200,6 @@ public sealed class ObsConfigurator
         }
     }
 
-    // ---------- CamLink eklentisi ----------
-
-    /// <summary>Eklenti dosyalarını OBS'in eklenti klasörüne kopyalar. Yönetici izni gerekebilir.</summary>
-    public SetupStep InstallPlugin(string sourceDir)
-    {
-        const string id = "plugin", title = "CamLink OBS eklentisi";
-        try
-        {
-            if (!Directory.Exists(sourceDir)) return new SetupStep(id, title, false, "Eklenti dosyaları uygulama klasöründe bulunamadı");
-            CopyDir(sourceDir, PluginDir);
-            return new SetupStep(id, title, true, "Kuruldu");
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return new SetupStep(id, title, false, "yönetici-gerekli");
-        }
-        catch (Exception e)
-        {
-            return new SetupStep(id, title, false, e.Message);
-        }
-    }
-
-    public static void CopyDir(string src, string dst)
-    {
-        Directory.CreateDirectory(dst);
-        foreach (var f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
-        {
-            var rel = Path.GetRelativePath(src, f);
-            var to = Path.Combine(dst, rel);
-            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
-            File.Copy(f, to, overwrite: true);
-        }
-    }
-
     // ---------- Kurulum betiği ----------
 
     public string? CurrentSceneCollectionFile()
@@ -249,7 +209,8 @@ public sealed class ObsConfigurator
             var p = Path.Combine(_configDir, name);
             if (!File.Exists(p)) continue;
             var file = IniFile.Load(p).Get("Basic", "SceneCollectionFile");
-            if (!string.IsNullOrWhiteSpace(file)) return file;
+            // OBS 32 adı uzantısıyla yazar (Untitled.json), OBS 30 uzantısız (Untitled).
+            if (!string.IsNullOrWhiteSpace(file)) return file.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? file[..^5] : file;
         }
         return null;
     }
@@ -270,7 +231,7 @@ public sealed class ObsConfigurator
             var scripts = root?["modules"]?["scripts-tool"] as JsonArray;
             return scripts?.OfType<JsonObject>()
                 .Select(s => s["path"]?.GetValue<string>())
-                .FirstOrDefault(s => s != null && s.EndsWith("deckpad-camlink.lua", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(s => s != null && s.EndsWith("deckpad.lua", StringComparison.OrdinalIgnoreCase));
         }
         catch
         {
@@ -287,7 +248,7 @@ public sealed class ObsConfigurator
             if (!File.Exists(scriptSource)) return new SetupStep(id, title, false, "Betik dosyası uygulama klasöründe bulunamadı");
             var scriptsDir = Path.Combine(_configDir, "scripts");
             Directory.CreateDirectory(scriptsDir);
-            var target = Path.Combine(scriptsDir, "deckpad-camlink.lua");
+            var target = Path.Combine(scriptsDir, "deckpad.lua");
             File.Copy(scriptSource, target, overwrite: true);
 
             var collection = SceneCollectionPath();
@@ -299,10 +260,14 @@ public sealed class ObsConfigurator
             root["modules"] = modules;
             var scripts = modules["scripts-tool"] as JsonArray ?? [];
             modules["scripts-tool"] = scripts;
+            // Webcam'li sürümün betiği (deckpad-camlink.lua) çıkarılır; ayarları yeni betiğe geçer.
+            var old = scripts.OfType<JsonObject>()
+                .Where(s => s["path"]?.GetValue<string>()?.EndsWith("deckpad-camlink.lua", StringComparison.OrdinalIgnoreCase) == true).ToList();
+            foreach (var s in old) scripts.Remove(s);
             // OBS yollarda ileri eğik çizgi kullanır.
             var obsPath = target.Replace('\\', '/');
             if (!scripts.OfType<JsonObject>().Any(s => string.Equals(s["path"]?.GetValue<string>(), obsPath, StringComparison.OrdinalIgnoreCase)))
-                scripts.Add(new JsonObject { ["path"] = obsPath, ["settings"] = new JsonObject() });
+                scripts.Add(new JsonObject { ["path"] = obsPath, ["settings"] = old.FirstOrDefault()?["settings"]?.DeepClone() ?? new JsonObject() });
             File.Copy(collection, collection + ".deckpad-yedek", overwrite: true);
             File.WriteAllText(collection, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
             return new SetupStep(id, title, true, $"\"{CurrentSceneCollectionFile()}\" koleksiyonuna eklendi");
@@ -335,7 +300,6 @@ public sealed class ObsConfigurator
             password = p;
         }
         if (req.DockUrl != null) steps.Add(AddDock(req.DockUrl));
-        if (req.PluginSource != null) steps.Add(InstallPlugin(req.PluginSource));
         if (req.ScriptSource != null) steps.Add(AddScript(req.ScriptSource));
         return (steps, password);
     }
@@ -346,5 +310,4 @@ public sealed record SetupRequest(
     int WebSocketPort,
     string? PreferredPassword,
     string? DockUrl,
-    string? PluginSource,
     string? ScriptSource);

@@ -45,7 +45,7 @@ public class PairingTests
     [Fact]
     public void RoundTrips()
     {
-        var p = new PairInfo("192.168.1.20", "Stüdyo PC", 4466, "abc123xyz", 4455, "p@ss&=", 9000, 9100);
+        var p = new PairInfo("192.168.1.20", "Stüdyo PC", 4466, "abc123xyz", 4455, "p@ss&=");
         var uri = p.ToUri();
         Assert.StartsWith("studiohub://pair?", uri);
         Assert.Equal(p, PairInfo.Parse(uri));
@@ -116,11 +116,12 @@ public class SettingsTests
     {
         var dir = Directory.CreateTempSubdirectory().FullName;
         var path = Path.Combine(dir, "settings.json");
-        File.WriteAllText(path, """{"hubPort": 80, "pairToken": "x", "webcam": {"width": 1000, "height": 10, "fps": 25}}""");
+        // Eski sürümlerin webcam alanları yok sayılır, dosya yine okunur.
+        File.WriteAllText(path, """{"hubPort": 80, "pairToken": "x", "deviceName": "Eski PC", "webcamPort": 9100, "webcam": {"width": 1000}}""");
         var s = HubSettings.Load(path);
         Assert.Equal(4466, s.HubPort);
         Assert.NotEqual("x", s.PairToken);
-        Assert.Equal((1280, 720, 30), (s.Webcam.Width, s.Webcam.Height, s.Webcam.Fps));
+        Assert.Equal("Eski PC", s.DeviceName);
     }
 }
 
@@ -165,7 +166,7 @@ public class ObsConfiguratorTests
         Directory.CreateDirectory(Path.Combine(cfg, "basic", "scenes"));
         File.WriteAllText(Path.Combine(cfg, "user.ini"), "[Basic]\r\nSceneCollection=Sahnelerim\r\nSceneCollectionFile=Sahnelerim\r\n\r\n[BasicWindow]\r\ngeometry=abc\r\n");
         File.WriteAllText(Path.Combine(cfg, "basic", "scenes", "Sahnelerim.json"), """{"name":"Sahnelerim","sources":[],"modules":{"auto-scene-switcher":{"active":false}}}""");
-        return new ObsConfigurator(cfg, Path.Combine(_root, "plugins"), () => _running);
+        return new ObsConfigurator(cfg, () => _running);
     }
 
     [Fact]
@@ -223,15 +224,34 @@ public class ObsConfiguratorTests
     public void ScriptIsAddedToCurrentCollection()
     {
         var o = Make();
-        var script = Path.Combine(_root, "deckpad-camlink.lua");
+        var script = Path.Combine(_root, "deckpad.lua");
         File.WriteAllText(script, "-- test");
         Assert.True(o.AddScript(script).Ok);
         Assert.True(o.AddScript(script).Ok);
         var json = File.ReadAllText(Path.Combine(o.ConfigDir, "basic", "scenes", "Sahnelerim.json"));
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "deckpad-camlink.lua"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "deckpad.lua"));
         Assert.Contains("auto-scene-switcher", json);
         Assert.NotNull(o.ScriptPathInCollection());
         Assert.True(File.Exists(Path.Combine(o.ConfigDir, "basic", "scenes", "Sahnelerim.json.deckpad-yedek")));
+    }
+
+    [Fact]
+    public void Obs32CollectionAndOldScriptName()
+    {
+        var o = Make();
+        // OBS 32 koleksiyon adını uzantısıyla yazar; webcam'li sürüm betiği eski adla eklemiş olabilir.
+        var ini = Path.Combine(o.ConfigDir, "user.ini");
+        File.WriteAllText(ini, File.ReadAllText(ini).Replace("SceneCollectionFile=Sahnelerim", "SceneCollectionFile=Sahnelerim.json"));
+        var collection = Path.Combine(o.ConfigDir, "basic", "scenes", "Sahnelerim.json");
+        File.WriteAllText(collection, """{"name":"Sahnelerim","modules":{"scripts-tool":[{"path":"C:/eski/deckpad-camlink.lua","settings":{"sfx_dir":"C:/Sesler"}}]}}""");
+        var script = Path.Combine(_root, "deckpad.lua");
+        File.WriteAllText(script, "-- test");
+        Assert.True(o.AddScript(script).Ok);
+        var json = File.ReadAllText(collection);
+        Assert.DoesNotContain("deckpad-camlink.lua", json);
+        Assert.Contains("C:/Sesler", json);
+        Assert.NotNull(o.ScriptPathInCollection());
+        Assert.Equal("Sahnelerim", o.CurrentSceneCollectionFile());
     }
 
     [Fact]
@@ -239,19 +259,8 @@ public class ObsConfiguratorTests
     {
         var o = Make();
         _running = true;
-        var (steps, _) = o.Setup(new SetupRequest(true, 4455, null, "http://x", null, null));
+        var (steps, _) = o.Setup(new SetupRequest(true, 4455, null, "http://x", null));
         Assert.Equal("obs-running", steps.Single().Id);
         Assert.False(File.Exists(Path.Combine(o.ConfigDir, "plugin_config", "obs-websocket", "config.json")));
-    }
-
-    [Fact]
-    public void InstallsPlugin()
-    {
-        var o = Make();
-        var src = Path.Combine(_root, "bundle", "camlink");
-        Directory.CreateDirectory(Path.Combine(src, "bin", "64bit"));
-        File.WriteAllText(Path.Combine(src, "bin", "64bit", "camlink.dll"), "x");
-        Assert.True(o.InstallPlugin(src).Ok);
-        Assert.True(o.Status().PluginInstalled);
     }
 }

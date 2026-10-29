@@ -1,6 +1,6 @@
 /**
  * StudioHub'ın eşleştirme kodu:
- * studiohub://pair?host=192.168.1.20&name=PC&hub=4466&token=..&obs=4455&pass=..&srt=9000&webcam=9100
+ * studiohub://pair?host=192.168.1.20&name=PC&hub=4466&token=..&obs=4455&pass=..
  * Tek kodla hem OBS bağlantısı hem bilgisayar eylemleri ayarlanır.
  */
 export interface PairInfo {
@@ -10,8 +10,6 @@ export interface PairInfo {
   token: string;
   obsPort: number;
   obsPassword: string;
-  obsSrtPort: number;
-  webcamPort: number;
 }
 
 const num = (v: string | null, d: number) => {
@@ -33,7 +31,5 @@ export function parsePairQr(data: string): PairInfo | null {
     token,
     obsPort: num(q.get('obs'), 4455),
     obsPassword: q.get('pass') ?? '',
-    obsSrtPort: num(q.get('srt'), 9000),
-    webcamPort: num(q.get('webcam'), 9100),
   };
 }

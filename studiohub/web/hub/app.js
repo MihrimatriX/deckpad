@@ -30,12 +30,6 @@ function led(el, kind, blink = false) {
   el.className = 'led' + (kind ? ' ' + kind : '') + (blink ? ' blink' : '');
 }
 
-function timecode(since) {
-  const s = Math.max(0, Math.floor((Date.now() - since) / 1000));
-  const p = (n) => String(n).padStart(2, '0');
-  return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
-}
-
 let state = null;
 let qrKey = '';
 let settingsDirty = false;
@@ -55,23 +49,14 @@ function render(s) {
   led($('d-phones-led'), phones ? 'on' : '');
   led(document.querySelector('[data-led="hub"]'), 'info');
 
-  const w = s.webcam;
-  const camText = {
-    stopped: 'Webcam kapalı',
-    waiting: 'Webcam telefonu bekliyor',
-    receiving: w.hasConsumer ? 'Webcam yayında' : 'Webcam görüntü alıyor',
-    error: 'Webcam hatası',
-  }[w.state];
-  $('d-cam').textContent = camText;
-  led($('d-cam-led'), { stopped: '', waiting: 'warn', receiving: w.hasConsumer ? 'live' : 'on', error: 'live' }[w.state], w.state === 'waiting');
-
-  const o = s.obs;
-  const obsReady = o.webSocketEnabled && s.obsHasPassword;
-  $('d-obs').textContent = !o.configFound ? 'OBS bulunamadı' : o.running ? (obsReady ? 'OBS açık' : 'OBS açık, ayar gerekli') : obsReady ? 'OBS hazır' : 'OBS ayar bekliyor';
-  led($('d-obs-led'), !o.configFound ? '' : obsReady ? 'on' : 'warn');
+  // Üst çubuk ve OBS kartı aynı özetten beslenir; ikisi asla çelişmez.
+  const [kind, text] = obsSummary(s);
+  $('d-obs').textContent = text;
+  led($('d-obs-led'), kind);
+  $('obs-text').textContent = text;
+  led($('obs-led'), kind);
 
   renderPair(s);
-  renderWebcam(w);
   renderObs(s);
   renderDeck(s);
   if (!settingsDirty) renderSettings(s);
@@ -100,8 +85,6 @@ function renderPair(s) {
   }
   const host = sel.value;
   $('m-hub').textContent = `${host}:${s.settings.hubPort}`;
-  $('m-webcam').textContent = `srt://${host}:${s.settings.webcamPort}`;
-  $('m-srt').textContent = `srt://${host}:${s.settings.obsSrtPort}`;
   $('m-ws').textContent = `${host}:${s.settings.obsWebSocketPort}`;
   const token = new URLSearchParams(s.pairUri.split('?')[1]).get('token');
   $('m-token').textContent = tokenShown ? token : '••••••••••';
@@ -122,56 +105,11 @@ async function loadQr() {
   }
 }
 
-function renderWebcam(w) {
-  const running = w.state !== 'stopped';
-  const btn = $('cam-toggle');
-  btn.textContent = running ? 'Durdur' : 'Başlat';
-  btn.className = 'key ' + (running ? 'key-danger' : 'key-primary');
-
-  const receiving = w.state === 'receiving';
-  $('monitor').classList.toggle('live', receiving && w.hasConsumer);
-  $('preview').hidden = !receiving;
-  $('monitor-idle').hidden = receiving;
-  $('monitor-text').textContent = !w.ffmpegFound
-    ? 'FFmpeg bulunamadı. StudioHub klasörünü zip\'teki haliyle kullan.'
-    : w.state === 'error'
-      ? w.error || 'Alıcı başlatılamadı'
-      : running
-        ? `Telefon bekleniyor. CamLink bu bilgisayarın ${w.port} portuna yayın yapmalı.`
-        : 'Alıcı kapalı. Telefondan görüntü almak için Başlat\'a bas.';
-
-  const tally = $('tally');
-  tally.hidden = !running;
-  const tallyLed = tally.querySelector('.led');
-  if (receiving) {
-    led(tallyLed, w.hasConsumer ? 'live' : 'on');
-    $('tally-text').textContent = `${w.hasConsumer ? 'Kullanımda' : 'Görüntü var'}  ${timecode(w.receivingSince)}  ${Math.round(w.fps)} kare/sn`;
-  } else {
-    led(tallyLed, 'warn', true);
-    $('tally-text').textContent = 'Bekliyor';
-  }
-
-  $('cam-name').textContent = w.deviceName;
-  const res = `${w.settings.width}x${w.settings.height}`;
-  for (const c of document.querySelectorAll('#res-chips .chip')) c.classList.toggle('sel', c.dataset.res === res);
-  for (const c of document.querySelectorAll('#fps-chips .chip')) c.classList.toggle('sel', Number(c.dataset.fps) === w.settings.fps);
-  $('opt-mirror').checked = w.settings.mirror;
-  $('opt-flip').checked = w.settings.flipVertical;
-
-  led($('driver-led'), w.driverInstalled ? 'on' : 'warn');
-  $('driver-text').textContent = w.driverInstalled
-    ? `Sanal kamera "${w.deviceName}" kurulu`
-    : 'Sanal kamera sürücüsü kurulu değil. Kurmak için yönetici izni istenir.';
-  $('driver-btn').textContent = w.driverInstalled ? 'Kaldır' : 'Kur';
-  $('driver-btn').dataset.install = w.driverInstalled ? '0' : '1';
-}
-
 function renderObs(s) {
   const o = s.obs;
   const rows = {
     websocket: [o.webSocketEnabled, o.webSocketEnabled ? `Açık, port ${o.webSocketPort}` : 'Kapalı'],
     dock: [o.dockAdded, o.dockAdded ? 'Paneller menüsünde' : 'Eklenmedi'],
-    plugin: [o.pluginInstalled, o.pluginInstalled ? 'Kurulu' : s.pluginBundled ? 'Kurulmadı' : 'Paket içinde yok'],
     script: [o.scriptAdded, o.scriptAdded ? `"${o.sceneCollection}" koleksiyonunda` : s.scriptBundled ? 'Eklenmedi' : 'Paket içinde yok'],
   };
   for (const li of document.querySelectorAll('#obs-list li')) {
@@ -183,15 +121,23 @@ function renderObs(s) {
   setup.disabled = busy || o.running || !o.configFound;
   const allDone = Object.values(rows).every(([ok]) => ok) && s.obsHasPassword;
   setup.textContent = allDone ? 'Yeniden uygula' : 'OBS\'i hazırla';
+  setup.className = 'key ' + (allDone ? 'key-secondary' : 'key-primary');
   $('obs-launch').disabled = !s.obsCanLaunch || o.running;
   $('obs-launch').textContent = o.running ? 'OBS açık' : 'OBS\'i aç';
+}
 
-  const n = $('obs-notice');
-  if (!n.dataset.sticky) {
-    if (!o.configFound) show(n, 'OBS bu kullanıcıda hiç açılmamış görünüyor. OBS\'i bir kez açıp kapat, sonra tekrar dene.');
-    else if (o.running && !allDone) show(n, 'Ayarları yazabilmek için önce OBS\'i kapat. StudioHub değişiklikleri OBS kapalıyken yapar.');
-    else n.hidden = true;
+// OBS'in durumunu tek cümleye indirger: [led, metin]. led: 'on' (yeşil), 'warn' (turuncu) ya da '' (sönük).
+// Elindekiler: s.obs.configFound (OBS bu kullanıcıda hiç açılmış mı), s.obs.running, s.obs.webSocketEnabled,
+// s.obs.dockAdded, s.obs.scriptAdded ve s.obsHasPassword (QR'ın taşıyacağı OBS şifresi biliniyor mu).
+// Yeşil = telefon OBS'e bağlanabilir. Panel ve betik ek özellik: eksikse yeşil kalır, metin söyler.
+function obsSummary(s) {
+  const o = s.obs;
+  if (!o.configFound) return ['', 'OBS bulunamadı: bir kez açıp kapat'];
+  if (!o.webSocketEnabled || !s.obsHasPassword) {
+    return ['warn', o.running ? 'OBS\'i kapat, sonra hazırla' : 'OBS\'i hazırla\'ya bas'];
   }
+  if (!o.dockAdded || !o.scriptAdded) return ['on', 'OBS bağlanabilir; panel ve betik için hazırla'];
+  return ['on', o.running ? 'OBS açık ve hazır' : 'OBS hazır'];
 }
 
 function show(n, text, ok = false) {
@@ -231,40 +177,12 @@ function renderSettings(s) {
   $('s-name').value = s.settings.deviceName;
   $('s-autostart').checked = s.settings.startWithWindows;
   $('p-hub').value = s.settings.hubPort;
-  $('p-webcam').value = s.settings.webcamPort;
-  $('p-srt').value = s.settings.obsSrtPort;
   $('p-ws').value = s.settings.obsWebSocketPort;
   led($('fw-led'), s.firewall ? 'on' : 'warn');
   $('fw-text').textContent = s.firewall ? 'Telefonlar için izinler ekli' : 'Telefonlar bağlanamıyorsa izin ver';
 }
 
-// ---------------- Önizleme ----------------
-
-let previewUrl;
-async function refreshPreview() {
-  if (!state || state.webcam.state !== 'receiving' || document.hidden) return;
-  try {
-    const r = await fetch('/api/webcam/preview.bmp', { headers: H, cache: 'no-store' });
-    if (r.status !== 200) return;
-    const url = URL.createObjectURL(await r.blob());
-    $('preview').src = url;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    previewUrl = url;
-  } catch {
-    /* bir sonraki turda yeniden denenir */
-  }
-}
-
 // ---------------- Eylemler ----------------
-
-async function patchWebcam(change) {
-  const next = { ...state.webcam.settings, ...change };
-  try {
-    render({ ...state, webcam: await api('PUT', '/webcam/settings', next) });
-  } catch (e) {
-    toast(e.message, 'live');
-  }
-}
 
 const actions = {
   async reveal() {
@@ -276,30 +194,15 @@ const actions = {
     qrKey = '';
     toast('Yeni eşleştirme kodu oluşturuldu. Telefonlar kodu yeniden okutmalı.');
   },
-  async 'cam-toggle'() {
-    const running = state.webcam.state !== 'stopped';
-    const w = await api('POST', running ? '/webcam/stop' : '/webcam/start');
-    render({ ...state, webcam: w });
-    toast(running ? 'Webcam alıcısı durduruldu' : 'Webcam alıcısı açıldı, telefon bekleniyor');
-  },
-  async driver(btn) {
-    const install = btn.dataset.install === '1';
-    toast(install ? 'Yönetici izni isteniyor…' : 'Sürücü kaldırılıyor…', 'warn');
-    const r = await api('POST', '/webcam/driver', { install });
-    const failed = r.steps.filter((x) => !x.ok);
-    toast(failed.length ? failed[0].message : install ? 'Sanal kamera kuruldu' : 'Sanal kamera kaldırıldı', failed.length ? 'live' : 'on');
-    render({ ...state, webcam: r.webcam });
-  },
   async 'obs-setup'() {
     busy = true;
     $('obs-setup').disabled = true;
     const n = $('obs-notice');
     try {
-      const r = await api('POST', '/obs/setup', { webSocket: true, dock: true, plugin: true, script: true });
+      const r = await api('POST', '/obs/setup', { webSocket: true, dock: true, script: true });
       const bad = r.steps.filter((x) => !x.ok);
-      n.dataset.sticky = '1';
       if (bad.length === 0) {
-        show(n, 'OBS hazır. OBS\'i açınca DeckPad paneli Paneller menüsünde, CamLink kaynağı Kaynaklar listesinde olur. Telefonlar bağlantı bilgisini QR koddan alır.', true);
+        show(n, 'OBS hazır. OBS\'i aç: DeckPad paneli Paneller menüsünde, kurulum betiği Araçlar › Betikler\'de olur. Telefon bağlantı bilgisini QR koddan alır.', true);
       } else {
         n.classList.remove('ok');
         n.innerHTML = '';
@@ -313,7 +216,7 @@ const actions = {
         n.append(ul);
         n.hidden = false;
       }
-      setTimeout(() => delete n.dataset.sticky, 15000);
+      setTimeout(() => (n.hidden = true), 15000);
       qrKey = '';
       await poll();
     } finally {
@@ -352,8 +255,6 @@ const actions = {
       deviceName: $('s-name').value.trim(),
       startWithWindows: $('s-autostart').checked,
       hubPort: num('p-hub'),
-      webcamPort: num('p-webcam'),
-      obsSrtPort: num('p-srt'),
       obsWebSocketPort: num('p-ws'),
     };
     if (!body.deviceName) throw new Error('Ad boş olamaz');
@@ -374,24 +275,14 @@ document.addEventListener('click', async (e) => {
     } catch (err) {
       toast(err.message, 'live');
     }
-    return;
   }
-  const res = e.target.closest('#res-chips .chip');
-  if (res) {
-    const [width, height] = res.dataset.res.split('x').map(Number);
-    return patchWebcam({ width, height });
-  }
-  const fps = e.target.closest('#fps-chips .chip');
-  if (fps) return patchWebcam({ fps: Number(fps.dataset.fps) });
 });
 
-$('opt-mirror').addEventListener('change', (e) => patchWebcam({ mirror: e.target.checked }));
-$('opt-flip').addEventListener('change', (e) => patchWebcam({ flipVertical: e.target.checked }));
 $('ip-select').addEventListener('change', () => {
   qrKey = '';
   if (state) render(state);
 });
-for (const id of ['s-name', 's-autostart', 'p-hub', 'p-webcam', 'p-srt', 'p-ws']) {
+for (const id of ['s-name', 's-autostart', 'p-hub', 'p-ws']) {
   $(id).addEventListener('input', () => (settingsDirty = true));
 }
 
@@ -410,4 +301,3 @@ async function poll() {
 
 poll();
 setInterval(poll, 1500);
-setInterval(refreshPreview, 400);

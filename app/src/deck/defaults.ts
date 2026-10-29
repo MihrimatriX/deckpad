@@ -41,6 +41,13 @@ export function defaultProfile(): DeckProfile {
       btn({ label: 'Ses efektleri', icon: 'musical-notes', color: '#6D3BE0', actions: [{ type: 'page', pageId: sfxId }] }),
       btn({ label: 'Slaytlar', icon: 'images', color: '#0E8072', actions: [{ type: 'page', pageId: slidesId }] }),
       btn({ label: 'Bilgisayar', icon: 'desktop', color: '#3A4660', actions: [{ type: 'page', pageId: pcId }] }),
+      btn({
+        label: 'Bildirim',
+        icon: 'notifications',
+        color: '#C4501A',
+        showState: false,
+        actions: [{ type: 'notify', text: 'Merhaba!', seconds: 5 }],
+      }),
     ],
   };
 

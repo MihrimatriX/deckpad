@@ -131,6 +131,15 @@ describe('DeckPad ↔ OBS', () => {
     );
   });
 
+  test('bildirim: yazıyı OBS\'e yazar, süre bitince siler', async () => {
+    obs.log = [];
+    assert.deepEqual(await runButton(btn([{ type: 'notify', text: 'Merhaba', seconds: 0.2 }]), ctx), []);
+    assert.deepEqual(
+      obs.log.map((l) => [l.type, l.data?.inputName, l.data?.inputSettings?.text]),
+      [['SetInputSettings', 'Bildirim', 'Merhaba'], ['Sleep', undefined, undefined], ['SetInputSettings', 'Bildirim', '']],
+    );
+  });
+
   test('geçiş ve süre, studio mode', async () => {
     obs.log = [];
     await runButton(btn([{ type: 'transition', name: 'Cut', durationMs: 500 }, { type: 'studioMode', mode: 'toggle' }]), ctx);

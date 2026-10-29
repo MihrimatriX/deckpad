@@ -9,11 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using QRCoder;
-using StudioHub.Core.Discovery;
 using StudioHub.Core.Helper;
 using StudioHub.Core.Net;
 using StudioHub.Core.Obs;
-using StudioHub.Core.Webcam;
 
 namespace StudioHub.Core.Server;
 
@@ -28,13 +26,15 @@ public sealed class HubOptions
     /// <summary>StudioHub yönetim arayüzü.</summary>
     public required string AdminRoot { get; init; }
 
-    /// <summary>CamLink OBS eklentisinin dosyaları (obs-plugins yapısıyla).</summary>
-    public string? PluginSource { get; init; }
-
-    /// <summary>OBS kurulum betiği (deckpad-camlink.lua).</summary>
+    /// <summary>OBS kurulum betiği (deckpad.lua).</summary>
     public string? ScriptSource { get; init; }
 
-    public required string FfmpegPath { get; init; }
+    /// <summary>
+    /// ASP.NET Core içerik kökü (appsettings.json'u burada arar ve klasörü izler). Kabuk, exe İndirilenler
+    /// gibi bir klasörden çalışabildiği için kendi çıkardığı arayüz klasörünü verir.
+    /// </summary>
+    public string ContentRoot { get; init; } = AppContext.BaseDirectory;
+
     public string Version { get; init; } = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
 
     /// <summary>Port açılamazsa Kestrel'in hatası bu adla gösterilir.</summary>
@@ -46,7 +46,7 @@ public sealed class HubOptions
 
 /// <summary>
 /// StudioHub'ın kalbi: tek porttan DeckPad panelini, yönetim arayüzünü, yerel API'yi ve
-/// telefonların bağlandığı WebSocket'i sunar; ağ duyurusunu ve webcam alıcısını yönetir.
+/// telefonların bağlandığı WebSocket'i sunar.
 /// </summary>
 public sealed class HubHost : IAsyncDisposable
 {
@@ -56,11 +56,9 @@ public sealed class HubHost : IAsyncDisposable
     private readonly IHubPlatform _platform;
     private readonly object _settingsLock = new();
     private WebApplication? _app;
-    private Beacon? _beacon;
 
     public HubSettings Settings { get; private set; }
     public HelperHub Helper { get; }
-    public WebcamService Webcam { get; }
     public ObsConfigurator Obs { get; }
     public DeckStore Deck { get; }
     public int Port { get; private set; }
@@ -69,7 +67,7 @@ public sealed class HubHost : IAsyncDisposable
     /// <summary>Kabuğun tepsi simgesini güncellemesi için.</summary>
     public event Action? StatusChanged;
 
-    public HubHost(HubOptions options, IHubPlatform platform, IPcPlatform pc, IFrameSink sink, ObsConfigurator obs)
+    public HubHost(HubOptions options, IHubPlatform platform, IPcPlatform pc, ObsConfigurator obs)
     {
         _o = options;
         _platform = platform;
@@ -77,20 +75,23 @@ public sealed class HubHost : IAsyncDisposable
         Deck = new DeckStore(options.DeckPath);
         Helper = new HelperHub(() => Settings, new PcActionDispatcher(pc), Deck);
         Helper.ClientsChanged += () => StatusChanged?.Invoke();
-        Webcam = new WebcamService(options.FfmpegPath, sink, () => Settings.Webcam, () => Settings.WebcamPort);
         Obs = obs;
     }
 
     public string BaseUrl => $"http://127.0.0.1:{Port}";
 
-    public PairInfo Pair(string? host = null) => PairInfo.From(Settings, host ?? NetInfo.PrimaryAddress());
+    public PairInfo Pair(string? host = null) =>
+        PairInfo.From(Settings, host ?? NetInfo.PrimaryAddress()) with { ObsPassword = CurrentObsPassword };
+
+    // OBS'in kendi ayarı esas: kullanıcı şifreyi OBS'te değiştirse ya da "OBS'i hazırla" hiç çalışmasa da QR doğru şifreyi taşır.
+    private string? CurrentObsPassword => Obs.ExistingPassword() ?? Settings.ObsPassword;
 
     public async Task StartAsync()
     {
         Port = Settings.HubPort;
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
-            ContentRootPath = AppContext.BaseDirectory,
+            ContentRootPath = _o.ContentRoot,
             Args = [],
         });
         builder.Logging.ClearProviders();
@@ -118,25 +119,7 @@ public sealed class HubHost : IAsyncDisposable
             throw new InvalidOperationException(StartError, e);
         }
         _app = app;
-
-        _beacon = new Beacon(BeaconPayload);
-        _beacon.Start();
-        Webcam.StartIdleFrames();
-        if (Settings.Webcam.AutoStart) Webcam.Start();
     }
-
-    internal object BeaconPayload() => new
-    {
-        app = "studiohub",
-        v = 1,
-        name = Settings.DeviceName,
-        hub = Settings.HubPort,
-        webcam = Settings.WebcamPort,
-        webcamOn = Webcam.State is WebcamState.Waiting or WebcamState.Receiving,
-        webcamBusy = Webcam.State == WebcamState.Receiving,
-        obsSrt = Settings.ObsSrtPort,
-        obsWs = Settings.ObsWebSocketPort,
-    };
 
     private bool IsLocal(HttpContext c) =>
         _o.IsLocal?.Invoke(c.Connection.RemoteIpAddress) ?? NetInfo.IsLoopback(c.Connection.RemoteIpAddress);
@@ -194,7 +177,7 @@ public sealed class HubHost : IAsyncDisposable
             c.Response.Headers.CacheControl = "no-store";
             return Results.Json(new
             {
-                obs = new { host = "127.0.0.1", port = Settings.ObsWebSocketPort, password = Settings.ObsPassword ?? "" },
+                obs = new { host = "127.0.0.1", port = Settings.ObsWebSocketPort, password = CurrentObsPassword ?? "" },
                 hub = new { url = $"ws://127.0.0.1:{Port}/ws", token = Settings.PairToken, name = Settings.DeviceName },
                 storage = "hub",
             });
@@ -228,9 +211,10 @@ public sealed class HubHost : IAsyncDisposable
             FileProvider = fp,
             OnPrepareResponse = ctx =>
             {
-                // index.html her seferinde yenilensin; diğer dosyalar adlarında sürüm taşır.
-                var name = ctx.File.Name;
-                ctx.Context.Response.Headers.CacheControl = name.EndsWith(".html") ? "no-cache" : "public, max-age=3600";
+                // Panel dosyaları adlarında sürüm taşır. Yönetim arayüzünün app.js'i taşımaz; StudioHub
+                // güncellenince eskisi önbellekte kalmasın diye her açılışta yeniden doğrulanır.
+                var cacheable = spa && !ctx.File.Name.EndsWith(".html");
+                ctx.Context.Response.Headers.CacheControl = cacheable ? "public, max-age=3600" : "no-cache";
             },
         });
         if (spa)
@@ -273,24 +257,16 @@ public sealed class HubHost : IAsyncDisposable
             var uri = Pair(host).ToUri();
             using var gen = new QRCodeGenerator();
             using var data = gen.CreateQrCode(uri, QRCodeGenerator.ECCLevel.M);
-            var svg = new SvgQRCode(data).GetGraphic(8, "#0B1530", "#DCE7FF", drawQuietZones: true);
+            // viewBox şart: yalnız width/height olursa CSS küçülttüğünde kod ölçeklenmez, sağı ve altı kesilir.
+            var svg = new SvgQRCode(data).GetGraphic(8, "#0B1530", "#DCE7FF", drawQuietZones: true, sizingMode: SvgQRCode.SizingMode.ViewBoxAttribute);
             return Results.Text(svg, "image/svg+xml");
         });
 
-        api.MapPost("/obs/setup", async (ObsSetupBody b) =>
+        api.MapPost("/obs/setup", (ObsSetupBody b) =>
         {
             var dockUrl = b.Dock ? $"http://127.0.0.1:{Port}/?mode=dock" : null;
             var (steps, password) = Obs.Setup(new SetupRequest(
-                b.WebSocket, Settings.ObsWebSocketPort, Settings.ObsPassword, dockUrl,
-                b.Plugin ? _o.PluginSource : null, b.Script ? _o.ScriptSource : null));
-
-            // Eklenti klasörüne yazmak yönetici izni ister; reddedilirse yükseltilmiş kopyalama denenir.
-            var pluginStep = steps.FindIndex(s => s.Id == "plugin" && !s.Ok && s.Message == "yönetici-gerekli");
-            if (pluginStep >= 0 && _o.PluginSource != null)
-            {
-                var r = await _platform.RunElevatedAsync(new ElevatedRequest(PluginSource: _o.PluginSource, PluginTarget: Obs.PluginDir));
-                steps[pluginStep] = r.FirstOrDefault(s => s.Id == "plugin") ?? steps[pluginStep] with { Message = "Yönetici izni verilmedi" };
-            }
+                b.WebSocket, Settings.ObsWebSocketPort, Settings.ObsPassword, dockUrl, b.Script ? _o.ScriptSource : null));
             if (password != null) UpdateSettings(s => s.ObsPassword = password);
             StatusChanged?.Invoke();
             return Results.Json(new { steps, status = Obs.Status() });
@@ -303,68 +279,19 @@ public sealed class HubHost : IAsyncDisposable
             return Results.Json(new { ok = true });
         });
 
-        api.MapPost("/webcam/start", () =>
-        {
-            Webcam.Start();
-            UpdateSettings(s => s.Webcam.AutoStart = true);
-            return Results.Json(WebcamObject());
-        });
-
-        api.MapPost("/webcam/stop", async () =>
-        {
-            await Webcam.StopAsync();
-            UpdateSettings(s => s.Webcam.AutoStart = false);
-            return Results.Json(WebcamObject());
-        });
-
-        api.MapPut("/webcam/settings", async (WebcamSettings body) =>
-        {
-            var running = Webcam.State != WebcamState.Stopped;
-            UpdateSettings(s =>
-            {
-                body.AutoStart = s.Webcam.AutoStart;
-                body.Normalize();
-                s.Webcam = body;
-            });
-            if (running) await Webcam.RestartAsync();
-            return Results.Json(WebcamObject());
-        });
-
-        api.MapPost("/webcam/driver", async (DriverBody b) =>
-        {
-            var steps = await _platform.RunElevatedAsync(b.Install
-                ? new ElevatedRequest(InstallDriver: true, DriverName: Webcam.Sink.DeviceName)
-                : new ElevatedRequest(UninstallDriver: true));
-            StatusChanged?.Invoke();
-            return Results.Json(new { steps, webcam = WebcamObject() });
-        });
-
-        api.MapGet("/webcam/preview.bmp", (HttpContext c) =>
-        {
-            c.Response.Headers.CacheControl = "no-store";
-            var bmp = Webcam.PreviewBmp();
-            return bmp == null ? Results.NoContent() : Results.Bytes(bmp, "image/bmp");
-        });
-
         api.MapPost("/firewall", async () =>
         {
-            var s = Settings;
-            var steps = await _platform.RunElevatedAsync(new ElevatedRequest(
-                FirewallTcp: [s.HubPort],
-                FirewallUdp: [s.WebcamPort, s.ObsSrtPort, Beacon.Port]));
+            var steps = await _platform.RunElevatedAsync(new ElevatedRequest(FirewallTcp: [Settings.HubPort]));
             return Results.Json(new { steps, firewall = _platform.FirewallConfigured(Settings) });
         });
 
         api.MapPut("/settings", (SettingsBody b) =>
         {
             var restart = false;
-            var webcamPortChanged = false;
             UpdateSettings(s =>
             {
                 if (!string.IsNullOrWhiteSpace(b.DeviceName)) s.DeviceName = b.DeviceName.Trim()[..Math.Min(40, b.DeviceName.Trim().Length)];
                 if (b.HubPort is int hp && hp != s.HubPort) { s.HubPort = hp; restart = true; }
-                if (b.WebcamPort is int wp && wp != s.WebcamPort) { s.WebcamPort = wp; webcamPortChanged = true; }
-                if (b.ObsSrtPort is int sp) s.ObsSrtPort = sp;
                 if (b.ObsWebSocketPort is int op) s.ObsWebSocketPort = op;
                 if (b.ObsPassword != null) s.ObsPassword = b.ObsPassword.Length == 0 ? null : b.ObsPassword;
                 s.Normalize();
@@ -374,7 +301,6 @@ public sealed class HubHost : IAsyncDisposable
                 try { _platform.Autostart = sw; }
                 catch (Exception e) { return Results.Json(new { ok = false, message = "Başlangıç ayarı yazılamadı: " + e.Message }); }
             }
-            if (webcamPortChanged && Webcam.State != WebcamState.Stopped) _ = Webcam.RestartAsync();
             return Results.Json(new { ok = true, restartNeeded = restart, status = StatusObject() });
         });
 
@@ -422,27 +348,6 @@ public sealed class HubHost : IAsyncDisposable
         StatusChanged?.Invoke();
     }
 
-    public object WebcamObject() => new
-    {
-        state = Webcam.State.ToString().ToLowerInvariant(),
-        error = Webcam.LastError,
-        fps = Webcam.Fps,
-        frames = Webcam.Frames,
-        receivingSince = Webcam.ReceivingSince?.ToUnixTimeMilliseconds(),
-        ffmpegFound = Webcam.FfmpegFound,
-        driverInstalled = _platform.DriverInstalled,
-        hasConsumer = SafeConsumer(),
-        deviceName = Webcam.Sink.DeviceName,
-        port = Settings.WebcamPort,
-        settings = Settings.Webcam,
-    };
-
-    private bool SafeConsumer()
-    {
-        try { return Webcam.Sink.HasConsumer; }
-        catch { return false; }
-    }
-
     public object StatusObject()
     {
         var addrs = NetInfo.LanAddresses();
@@ -460,10 +365,8 @@ public sealed class HubHost : IAsyncDisposable
             dockUrl = $"http://127.0.0.1:{Port}/?mode=dock",
             obs = Obs.Status(),
             obsCanLaunch = _platform.CanLaunchObs,
-            obsHasPassword = !string.IsNullOrEmpty(Settings.ObsPassword),
-            pluginBundled = _o.PluginSource != null && Directory.Exists(_o.PluginSource),
+            obsHasPassword = !string.IsNullOrEmpty(CurrentObsPassword),
             scriptBundled = _o.ScriptSource != null && File.Exists(_o.ScriptSource),
-            webcam = WebcamObject(),
             clients = Helper.Clients,
             deckSaved = Deck.UpdatedAt?.ToUnixTimeMilliseconds(),
             firewall = SafeFirewall(),
@@ -471,8 +374,6 @@ public sealed class HubHost : IAsyncDisposable
             {
                 deviceName = Settings.DeviceName,
                 hubPort = Settings.HubPort,
-                webcamPort = Settings.WebcamPort,
-                obsSrtPort = Settings.ObsSrtPort,
                 obsWebSocketPort = Settings.ObsWebSocketPort,
                 startWithWindows = SafeAutostart(),
             },
@@ -493,8 +394,6 @@ public sealed class HubHost : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_beacon != null) await _beacon.DisposeAsync();
-        await Webcam.DisposeAsync();
         if (_app != null)
         {
             await Helper.DisconnectAllAsync("StudioHub kapanıyor");
@@ -505,14 +404,11 @@ public sealed class HubHost : IAsyncDisposable
     }
 }
 
-public sealed record ObsSetupBody(bool WebSocket = true, bool Dock = true, bool Plugin = true, bool Script = true);
-public sealed record DriverBody(bool Install = true);
+public sealed record ObsSetupBody(bool WebSocket = true, bool Dock = true, bool Script = true);
 public sealed record OpenBody(string Url);
 public sealed record SettingsBody(
     string? DeviceName,
     int? HubPort,
-    int? WebcamPort,
-    int? ObsSrtPort,
     int? ObsWebSocketPort,
     string? ObsPassword,
     bool? StartWithWindows);

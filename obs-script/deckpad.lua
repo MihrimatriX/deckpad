@@ -1,5 +1,5 @@
 --[[
-DeckPad ve CamLink için OBS kurulum betiği
+DeckPad için OBS kurulum betiği
 
 OBS'te Araçlar > Betikler > + ile eklenir (StudioHub "OBS'i hazırla" ile kendiliğinden ekler).
 Butonlar tekrar tekrar basılabilir: var olan sahne ve kaynaklara dokunulmaz, yalnızca eksikler eklenir.
@@ -9,9 +9,9 @@ Butonlar tekrar tekrar basılabilir: var olan sahne ve kaynaklara dokunulmaz, ya
                    DeckPad bu kaynakları "Ses efektleri" sayfasına kendiliğinden tuş olarak koyar.
   Slaytlar       : klasördeki görseller "Slaytlar" sahnesindeki "Slayt gösterisi" kaynağına eklenir (elle ilerletme).
                    DeckPad'in Önceki/Sonraki tuşları bu kaynağı kullanır.
-  Telefon kamerası: CamLink eklentisi kuruluysa "CamLink telefon kamerası" kaynağı, değilse
-                   SRT dinleyen bir Medya Kaynağı eklenir.
-  Önerilen sahneler: Başlangıç, Kamera, Ekran, Ara ve Bitiş.
+  Önerilen sahneler: Başlangıç, Kamera, Ekran, Ara ve Bitiş. Kamera sahnesine kendi kameranı eklersin.
+  Bildirim       : OBS açılınca her sahneye boş "Bildirim" yazısı eklenir (kendiliğinden, düğme gerekmez).
+                   DeckPad'in "Ekrana yazı göster" tuşu bunu birkaç saniye doldurur.
 ]]
 
 obs = obslua
@@ -20,8 +20,7 @@ local SFX_SCENE = "Ses Efektleri"
 -- OBS'te sahne ve kaynak adları ortak bir alanda olduğundan ikisi farklı adlandırılır.
 local SLIDES_SCENE = "Slaytlar"
 local SLIDES_NAME = "Slayt gösterisi"
-local CAMERA_NAME = "Telefon kamerası"
-local SRT_PORT = 9000
+local NOTIFY_NAME = "Bildirim"
 local AUDIO_EXT = { mp3 = true, wav = true, ogg = true, m4a = true, flac = true, aac = true, opus = true }
 
 local settings_ref = nil
@@ -246,6 +245,48 @@ local function add_sfx()
 end
 
 -- ---------------------------------------------------------------------------
+-- Bildirim
+
+-- DeckPad'in "Ekrana yazı göster" eylemi bu metni doldurup süre bitince boşaltır; boşken görünmez.
+-- Tek kaynak tüm sahnelerde paylaşılır. Sonradan eklenen sahneler OBS yeniden açılınca alır.
+local function add_notify_everywhere()
+	local id = first_type({ "text_gdiplus_v3", "text_gdiplus_v2", "text_gdiplus", "text_ft2_source_v2", "text_ft2_source" })
+	if id == nil then
+		return
+	end
+	local w, h = canvas()
+	local s = obs.obs_data_create()
+	local font = obs.obs_data_create()
+	obs.obs_data_set_string(font, "face", "Segoe UI Semibold")
+	obs.obs_data_set_int(font, "size", math.floor(h / 14))
+	obs.obs_data_set_obj(s, "font", font)
+	obs.obs_data_release(font)
+	obs.obs_data_set_string(s, "text", "")
+	obs.obs_data_set_string(s, "align", "center")
+	obs.obs_data_set_int(s, "color", 0xFFFFFFFF)
+	obs.obs_data_set_int(s, "color1", 0xFFFFFFFF)
+	obs.obs_data_set_int(s, "color2", 0xFFFFFFFF)
+	-- Kenarlık her arka planda okunur kılar.
+	obs.obs_data_set_bool(s, "outline", true)
+	obs.obs_data_set_int(s, "outline_size", 6)
+	obs.obs_data_set_int(s, "outline_color", 0xFF000000)
+	each_scene(function(src, scene)
+		-- Ses Efektleri sahnesi diğerlerine bağlı; oraya da konursa yazı iki kez çizilir.
+		if scene ~= nil and obs.obs_source_get_name(src) ~= SFX_SCENE then
+			local item, _, added = add_source(scene, id, NOTIFY_NAME, s)
+			if added then
+				local pos = obs.vec2()
+				pos.x = w / 2
+				pos.y = h * 0.85
+				obs.obs_sceneitem_set_alignment(item, ALIGN_CENTER)
+				obs.obs_sceneitem_set_pos(item, pos)
+			end
+		end
+	end)
+	obs.obs_data_release(s)
+end
+
+-- ---------------------------------------------------------------------------
 -- Slaytlar
 
 local function add_slides()
@@ -283,6 +324,7 @@ local function add_slides()
 				fit(item, 0, 0, w, h)
 			end
 		end)
+		add_notify_everywhere()
 		if obs.obs_data_get_bool(settings_ref, "nest_sfx") then
 			nest_sfx_everywhere()
 		end
@@ -291,55 +333,6 @@ local function add_slides()
 	obs.obs_data_release(s)
 	log(msg)
 	return msg
-end
-
--- ---------------------------------------------------------------------------
--- Telefon kamerası
-
-local function camera_settings()
-	local s = obs.obs_data_create()
-	if has_type("camlink_source") then
-		return "camlink_source", s
-	end
-	obs.obs_data_set_bool(s, "is_local_file", false)
-	obs.obs_data_set_string(s, "input", string.format("srt://0.0.0.0:%d?mode=listener&latency=120000", SRT_PORT))
-	obs.obs_data_set_string(s, "input_format", "mpegts")
-	obs.obs_data_set_int(s, "reconnect_delay_sec", 1)
-	obs.obs_data_set_int(s, "buffering_mb", 1)
-	obs.obs_data_set_bool(s, "hw_decode", true)
-	obs.obs_data_set_bool(s, "restart_on_activate", false)
-	obs.obs_data_set_bool(s, "close_when_inactive", false)
-	obs.obs_data_set_bool(s, "clear_on_media_end", true)
-	return "ffmpeg_source", s
-end
-
-local function add_camera_to(scene, x, y, w, h)
-	local id, s = camera_settings()
-	local item, _, added = add_source(scene, id, CAMERA_NAME, s)
-	obs.obs_data_release(s)
-	if added then
-		fit(item, x, y, w, h)
-	end
-	return item ~= nil, id
-end
-
-local function add_camera()
-	local current = obs.obs_frontend_get_current_scene()
-	if current == nil then
-		return "Önce bir sahne seç."
-	end
-	local scene = obs.obs_scene_from_source(current)
-	local w, h = canvas()
-	local ok, id = add_camera_to(scene, 0, 0, w, h)
-	local name = obs.obs_source_get_name(current)
-	obs.obs_source_release(current)
-	if not ok then
-		return "Kamera eklenemedi."
-	end
-	if id == "camlink_source" then
-		return string.format("\"%s\" sahnesine eklendi. CamLink'te bu bilgisayarı seçmen yeterli.", name)
-	end
-	return string.format("\"%s\" sahnesine eklendi (eklenti yok, SRT %d dinleniyor). CamLink'te OBS hedefini seç.", name, SRT_PORT)
 end
 
 -- ---------------------------------------------------------------------------
@@ -408,7 +401,6 @@ local function add_scenes()
 	end)
 	scene("Kamera", function(sc)
 		add_background(sc, w, h)
-		add_camera_to(sc, 0, 0, w, h)
 	end)
 	scene("Ekran", function(sc)
 		local cap = first_type({ "monitor_capture", "xshm_input_v2", "xshm_input", "pipewire-desktop-capture-source", "screen_capture" })
@@ -420,22 +412,6 @@ local function add_scenes()
 				fit(item, 0, 0, w, h)
 			end
 		end
-		-- Köşede küçük kamera
-		local pw, ph = math.floor(w * 0.24), math.floor(h * 0.24)
-		local item = obs.obs_scene_find_source(sc, CAMERA_NAME)
-		if item == nil then
-			local src = obs.obs_get_source_by_name(CAMERA_NAME)
-			if src ~= nil then
-				item = obs.obs_scene_add(sc, src)
-				obs.obs_source_release(src)
-			else
-				add_camera_to(sc, 0, 0, pw, ph)
-				item = obs.obs_scene_find_source(sc, CAMERA_NAME)
-			end
-		end
-		if item ~= nil then
-			fit(item, w - pw - math.floor(w * 0.025), h - ph - math.floor(h * 0.04), pw, ph)
-		end
 	end)
 	scene("Ara", function(sc)
 		add_background(sc, w, h)
@@ -446,6 +422,7 @@ local function add_scenes()
 		add_title(sc, "Bitiş yazısı", "İzlediğiniz için teşekkürler", w, h)
 	end)
 
+	add_notify_everywhere()
 	if obs.obs_data_get_bool(settings_ref, "nest_sfx") then
 		nest_sfx_everywhere()
 	end
@@ -470,7 +447,7 @@ local function report(props, msg)
 end
 
 function script_description()
-	return [[<h3>DeckPad ve CamLink kurulumu</h3>
+	return [[<h3>DeckPad kurulumu</h3>
 <p>DeckPad tuşlarının çalışacağı sahneleri ve kaynakları hazırlar. Butonlara tekrar basmak güvenlidir; yalnızca eksikler eklenir.</p>
 <p>WebSocket bağlantısı ve DeckPad paneli için StudioHub'daki <b>OBS'i hazırla</b> düğmesini kullan.</p>]]
 end
@@ -491,9 +468,6 @@ function script_properties()
 		return report(props, add_slides())
 	end)
 
-	obs.obs_properties_add_button(p, "cam_btn", "Telefon kamerasını bu sahneye ekle", function(props)
-		return report(props, add_camera())
-	end)
 	obs.obs_properties_add_button(p, "scenes_btn", "Önerilen sahneleri oluştur", function(props)
 		return report(props, add_scenes())
 	end)
@@ -520,7 +494,6 @@ local function selftest()
 	log("[selftest] efektler: " .. add_sfx())
 	log("[selftest] efektler (2. kez): " .. add_sfx())
 	log("[selftest] slaytlar: " .. add_slides())
-	log("[selftest] kamera: " .. add_camera())
 	log("[selftest] bitti")
 end
 
@@ -530,6 +503,7 @@ local selftest_pending = false
 local function on_event(event)
 	if event == obs.OBS_FRONTEND_EVENT_FINISHED_LOADING or event == obs.OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED then
 		obs.timer_add(stop_sfx_timer, 300)
+		add_notify_everywhere()
 		if selftest_pending then
 			selftest_pending = false
 			selftest()
@@ -552,7 +526,6 @@ end
 _G.deckpad_setup = {
 	add_sfx = add_sfx,
 	add_slides = add_slides,
-	add_camera = add_camera,
 	add_scenes = add_scenes,
 	stop_sfx = stop_sfx,
 }

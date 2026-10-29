@@ -235,6 +235,15 @@ function ActionForm({ action, onChange }: { action: DeckAction; onChange: (a: De
             </Hint>
           </>
         );
+      case 'notify':
+        return (
+          <>
+            <Field label="Ekranda görünecek yazı" value={action.text} onChangeText={(text) => set({ text })} placeholder="Abone olmayı unutma!" multiline />
+            <Label>Süre</Label>
+            <ChipGroup options={['3', '5', '8', '15'].map((v) => ({ value: v, label: `${v} sn` }))} value={String(action.seconds)} onChange={(v) => set({ seconds: Number(v) })} />
+            <Hint>Yazı OBS'teki "Bildirim" kaynağında görünür, süre bitince silinir. Kaynağı DeckPad betiği her sahneye ekler.</Hint>
+          </>
+        );
       case 'chapter':
         return <Field label="İşaret adı (isteğe bağlı)" value={action.name ?? ''} onChangeText={(name) => set({ name: name || undefined })} placeholder="Örn. Bölüm 2" />;
       case 'hotkey':

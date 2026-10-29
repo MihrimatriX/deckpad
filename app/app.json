@@ -53,6 +53,7 @@
         {
           "android": {
             "usesCleartextTraffic": true,
+            "extraProguardRules": "-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }",
             "buildArchs": [
               "arm64-v8a"
             ]

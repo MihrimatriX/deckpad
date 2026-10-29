@@ -10,24 +10,20 @@ var admin = args.ElementAtOrDefault(2) ?? Path.Combine(AppContext.BaseDirectory,
 var bundle = args.ElementAtOrDefault(3);
 Directory.CreateDirectory(data);
 
-var sink = new FakeSink();
-var platform = new FakePlatform(sink);
-// Gerçek OBS ile test için yapılandırma klasörleri dışarıdan verilebilir.
+var platform = new FakePlatform();
+// Gerçek OBS ile test için yapılandırma klasörü dışarıdan verilebilir.
 var obsDir = Environment.GetEnvironmentVariable("OBS_CONFIG_DIR") ?? Path.Combine(data, "obs-studio");
-var pluginRoot = Environment.GetEnvironmentVariable("OBS_PLUGIN_ROOT") ?? Path.Combine(data, "obs-plugins");
-var obs = new ObsConfigurator(obsDir, pluginRoot, platform.IsObsRunning);
+var obs = new ObsConfigurator(obsDir, platform.IsObsRunning);
 await using var host = new HubHost(new HubOptions
 {
     SettingsPath = Path.Combine(data, "settings.json"),
     DeckPath = Path.Combine(data, "deck.json"),
     PanelRoot = panel,
     AdminRoot = admin,
-    FfmpegPath = Environment.GetEnvironmentVariable("FFMPEG") ?? "/usr/local/bin/ffmpeg",
-    PluginSource = bundle == null ? null : Path.Combine(bundle, "obs-plugin", "camlink"),
-    ScriptSource = bundle == null ? null : Path.Combine(bundle, "obs-script", "deckpad-camlink.lua"),
+    ScriptSource = bundle == null ? null : Path.Combine(bundle, "obs-script", "deckpad.lua"),
     LogToConsole = true,
     IsLocal = ip => ip != null && (System.Net.IPAddress.IsLoopback(ip) || Environment.GetEnvironmentVariable("HUB_ALL_LOCAL") == "1"),
-}, platform, new FakePc(), sink, obs);
+}, platform, new FakePc(), obs);
 
 await host.StartAsync();
 Console.WriteLine($"StudioHub geliştirme sunucusu: {host.BaseUrl}/hub/  (veri: {data})");

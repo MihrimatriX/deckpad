@@ -9,8 +9,7 @@ studiohub/tests/**/obj/
 studiohub/.vs/
 *.user
 
-# Üretilen ya da indirilen dosyalar (scripts/hazirla.* üretir)
-studiohub/vendor/ffmpeg/ffmpeg.exe
+# Üretilen dosyalar (app'te npm run export:panel üretir)
 studiohub/web/panel/
 
 # Teslim paketleri
@@ -20,3 +19,6 @@ studiohub/web/panel/
 
 .DS_Store
 Thumbs.db
+
+# Tarayıcı denetim araçlarının çıktıları
+.playwright-mcp/

@@ -77,6 +77,7 @@ describe('StudioHub bağlantısı', () => {
   after(() => hub.stop());
 
   test('eşleştirme kodu ayrıştırılır', () => {
+    // Eski StudioHub'ın kodundaki srt ve webcam alanları yok sayılır.
     const p = parsePairQr('studiohub://pair?host=192.168.1.20&name=St%C3%BCdyo+PC&hub=4466&token=abc&obs=4455&pass=p%40ss%26&srt=9000&webcam=9100');
     assert.deepEqual(p, {
       host: '192.168.1.20',
@@ -85,8 +86,6 @@ describe('StudioHub bağlantısı', () => {
       token: 'abc',
       obsPort: 4455,
       obsPassword: 'p@ss&',
-      obsSrtPort: 9000,
-      webcamPort: 9100,
     });
     assert.equal(parsePairQr('obsws://1.2.3.4:4455/x'), null);
     assert.equal(parsePairQr('studiohub://pair?host=1.2.3.4'), null);

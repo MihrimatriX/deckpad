@@ -258,6 +258,7 @@ export class MockObs {
         this.emit('CurrentSceneTransitionChanged', { transitionName: d.transitionName });
         return this.ok();
       case 'SetCurrentSceneTransitionDuration':
+      case 'SetInputSettings':
       case 'TriggerHotkeyByName':
       case 'CreateRecordChapter':
         return this.ok();

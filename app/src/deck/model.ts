@@ -16,6 +16,7 @@ export type DeckAction =
   | { type: 'studioTransition' }
   | { type: 'studioMode'; mode: ToggleMode }
   | { type: 'media'; input: string; mode: 'restart' | 'playPause' | 'stop' | 'next' | 'previous' }
+  | { type: 'notify'; text: string; seconds: number }
   | { type: 'replayBuffer'; mode: 'toggle' | 'start' | 'stop' }
   | { type: 'replaySave' }
   | { type: 'chapter'; name?: string }
@@ -72,6 +73,8 @@ export const isPcAction = (a: DeckAction) => a.type.startsWith('pc');
 export const OBS_NAMES = {
   sfxScene: 'Ses Efektleri',
   slideshow: 'Slayt gösterisi',
+  /** Her sahnede duran boş metin kaynağı; "Ekrana yazı göster" bunu doldurup boşaltır. */
+  notify: 'Bildirim',
 } as const;
 
 export const newId = () =>

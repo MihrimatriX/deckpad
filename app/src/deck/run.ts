@@ -1,7 +1,7 @@
 import { hubClient, type PcAction } from '../hub/client';
 import { obsClient, type BatchResult } from '../obs/client';
 import { filterKey, itemKey, useObs, type ObsState } from '../obs/store';
-import { isPcAction, type DeckAction, type DeckButton } from './model';
+import { isPcAction, OBS_NAMES, type DeckAction, type DeckButton } from './model';
 
 type Req = { requestType: string; requestData?: Record<string, unknown> };
 
@@ -184,6 +184,11 @@ async function toRequests(a: DeckAction, s: ObsState): Promise<Req[]> {
         action = pick(a.mode, { restart: 'RESTART', stop: 'STOP', next: 'NEXT', previous: 'PREVIOUS' });
       }
       return [{ requestType: 'TriggerMediaInputAction', requestData: { inputName, mediaAction: MEDIA + action } }];
+    }
+    case 'notify': {
+      // ponytail: üst üste basılınca öncekinin silme adımı yenisini erken siler; sıra gerekirse kuyruk ekle.
+      const text = (t: string) => ({ requestType: 'SetInputSettings', requestData: { inputName: OBS_NAMES.notify, inputSettings: { text: t } } });
+      return [text(a.text), { requestType: 'Sleep', requestData: { sleepMillis: Math.min(a.seconds, 50) * 1000 } }, text('')];
     }
     case 'replayBuffer':
       return [

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -8,7 +7,6 @@ using System.Text.Json.Nodes;
 using StudioHub.Core;
 using StudioHub.Core.Obs;
 using StudioHub.Core.Server;
-using StudioHub.Core.Webcam;
 using StudioHub.Dev;
 
 namespace StudioHub.Core.Tests;
@@ -17,7 +15,6 @@ public sealed class HostFixture : IAsyncLifetime
 {
     public readonly string Dir = Directory.CreateTempSubdirectory("hub-test").FullName;
     public readonly FakePc Pc = new();
-    public readonly FakeSink Sink = new();
     public FakePlatform Platform = null!;
     public HubHost Host = null!;
     public HttpClient Http = null!;
@@ -36,7 +33,6 @@ public sealed class HostFixture : IAsyncLifetime
     {
         Port = FreeTcpPort();
         var settings = new HubSettings { HubPort = Port, PairToken = "test-token-123", DeviceName = "Test PC" };
-        settings.Webcam.AutoStart = false;
         settings.Save(Path.Combine(Dir, "settings.json"));
         var panel = Path.Combine(Dir, "panel");
         var admin = Path.Combine(Dir, "admin");
@@ -45,15 +41,15 @@ public sealed class HostFixture : IAsyncLifetime
         File.WriteAllText(Path.Combine(panel, "index.html"), "<html>panel</html>");
         File.WriteAllText(Path.Combine(panel, "app.js"), "console.log(1)");
         File.WriteAllText(Path.Combine(admin, "index.html"), "<html>hub</html>");
-        Platform = new FakePlatform(Sink);
+        File.WriteAllText(Path.Combine(admin, "app.js"), "console.log(2)");
+        Platform = new FakePlatform();
         Host = new HubHost(new HubOptions
         {
             SettingsPath = Path.Combine(Dir, "settings.json"),
             DeckPath = Path.Combine(Dir, "deck.json"),
             PanelRoot = panel,
             AdminRoot = admin,
-            FfmpegPath = "/nonexistent/ffmpeg",
-        }, Platform, Pc, Sink, new ObsConfigurator(Path.Combine(Dir, "obs"), Path.Combine(Dir, "plugins"), () => false));
+        }, Platform, Pc, new ObsConfigurator(Path.Combine(Dir, "obs"), () => false));
         await Host.StartAsync();
         Http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{Port}") };
     }
@@ -104,6 +100,16 @@ public class HostTests(HostFixture f) : IClassFixture<HostFixture>
     }
 
     [Fact]
+    public async Task AdminScriptIsRevalidated()
+    {
+        // Yönetim arayüzünün app.js'i sürümsüz adla gelir; güncellemeden sonra eskisi kalmamalı.
+        var admin = await f.Http.GetAsync("/hub/app.js");
+        Assert.True(admin.Headers.CacheControl!.NoCache);
+        var panel = await f.Http.GetAsync("/app.js");
+        Assert.Equal(TimeSpan.FromHours(1), panel.Headers.CacheControl!.MaxAge);
+    }
+
+    [Fact]
     public async Task ApiNeedsHeader()
     {
         var r = await f.Http.GetAsync("/api/status");
@@ -113,7 +119,6 @@ public class HostTests(HostFixture f) : IClassFixture<HostFixture>
         var o = JsonNode.Parse(await r.Content.ReadAsStringAsync())!;
         Assert.Equal("Test PC", o["name"]!.GetValue<string>());
         Assert.StartsWith("studiohub://pair?", o["pairUri"]!.GetValue<string>());
-        Assert.Equal("stopped", o["webcam"]!["state"]!.GetValue<string>());
     }
 
     [Fact]
@@ -134,11 +139,29 @@ public class HostTests(HostFixture f) : IClassFixture<HostFixture>
     }
 
     [Fact]
+    public async Task PairUsesObsOwnPassword()
+    {
+        // "OBS'i hazırla" hiç çalışmamış (ayarda şifre yok) ama OBS'te şifre var: QR yine de onu taşımalı.
+        var cfg = Path.Combine(f.Dir, "obs", "plugin_config", "obs-websocket", "config.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(cfg)!);
+        File.WriteAllText(cfg, """{"server_enabled":true,"auth_required":true,"server_password":"obs-sifresi"}""");
+        try
+        {
+            var s = JsonNode.Parse(await (await f.Http.SendAsync(Api(HttpMethod.Get, "/api/status"))).Content.ReadAsStringAsync())!;
+            Assert.True(s["obsHasPassword"]!.GetValue<bool>());
+            Assert.Contains("pass=obs-sifresi", s["pairUri"]!.GetValue<string>());
+        }
+        finally { File.Delete(cfg); }
+    }
+
+    [Fact]
     public async Task QrIsSvg()
     {
         var r = await f.Http.SendAsync(Api(HttpMethod.Get, "/api/qr.svg"));
         Assert.Equal("image/svg+xml", r.Content.Headers.ContentType!.MediaType);
-        Assert.Contains("<svg", await r.Content.ReadAsStringAsync());
+        var svg = await r.Content.ReadAsStringAsync();
+        Assert.Contains("<svg", svg);
+        Assert.Contains("viewBox=", svg);
     }
 
     [Fact]
@@ -213,22 +236,12 @@ public class HostTests(HostFixture f) : IClassFixture<HostFixture>
     }
 
     [Fact]
-    public async Task DriverInstallGoesThroughElevation()
+    public async Task FirewallGoesThroughElevation()
     {
-        f.Sink.IsInstalled = false;
-        var r = await f.Http.SendAsync(Api(HttpMethod.Post, "/api/webcam/driver", new { install = true }));
+        var r = await f.Http.SendAsync(Api(HttpMethod.Post, "/api/firewall"));
         var o = JsonNode.Parse(await r.Content.ReadAsStringAsync())!;
-        Assert.True(o["webcam"]!["driverInstalled"]!.GetValue<bool>());
-        Assert.Contains(f.Platform.Elevated, e => e.InstallDriver && e.DriverName == "CamLink Kamera");
-    }
-
-    [Fact]
-    public void BeaconPayloadHasPorts()
-    {
-        var json = System.Text.Json.JsonSerializer.Serialize(f.Host.BeaconPayload());
-        Assert.Contains("\"app\":\"studiohub\"", json);
-        Assert.Contains($"\"hub\":{f.Port}", json);
-        Assert.DoesNotContain("token", json);
+        Assert.True(o["firewall"]!.GetValue<bool>());
+        Assert.Contains(f.Platform.Elevated, e => e.FirewallTcp.SequenceEqual(new[] { f.Port }));
     }
 }
 
@@ -257,77 +270,5 @@ public class LockoutTests
         fx = new HostFixture();
         var f = fx;
         return f.InitializeAsync().ContinueWith(_ => f);
-    }
-}
-
-public class WebcamPipelineTests
-{
-    private const string LinuxFfmpeg = "/usr/local/bin/ffmpeg";
-
-    private static int FreeUdpPort()
-    {
-        using var u = new UdpClient(0);
-        return ((IPEndPoint)u.Client.LocalEndPoint!).Port;
-    }
-
-    [Fact]
-    public async Task DecodesSrtIntoFlippedFrames()
-    {
-        if (!File.Exists(LinuxFfmpeg)) return;
-        var port = FreeUdpPort();
-        var sink = new FakeSink();
-        var settings = new WebcamSettings { Width = 640, Height = 360, Fps = 30, FlipVertical = true };
-        await using var svc = new WebcamService(LinuxFfmpeg, sink, () => settings, () => port);
-        svc.Start();
-        await Task.Delay(800);
-        Assert.Equal(WebcamState.Waiting, svc.State);
-
-        // Telefonu taklit eden gönderici: üstte kırmızı şerit olan mavi görüntü.
-        var psi = new ProcessStartInfo(LinuxFfmpeg)
-        {
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (var a in new[]
-        {
-            "-hide_banner", "-loglevel", "error", "-re", "-f", "lavfi",
-            "-i", "color=c=blue:s=1280x720:r=30,drawbox=x=0:y=0:w=1280:h=120:color=red:t=fill",
-            "-t", "30", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-g", "15",
-            "-f", "mpegts", $"srt://127.0.0.1:{port}?mode=caller&latency=120000",
-        }) psi.ArgumentList.Add(a);
-        using var sender = Process.Start(psi)!;
-
-        var sw = Stopwatch.StartNew();
-        while (Interlocked.Read(ref sink.Frames) < 30 && sw.Elapsed < TimeSpan.FromSeconds(15)) await Task.Delay(100);
-        if (sink.Frames < 30)
-        {
-            sender.Kill();
-            Assert.Fail($"kare gelmedi: {sink.Frames}, hata: {svc.LastError}, log: {string.Join(" | ", svc.RecentLog())}, gönderici: {sender.StandardError.ReadToEnd()}");
-        }
-        Assert.Equal(WebcamState.Receiving, svc.State);
-        Assert.Equal((640, 360), (sink.LastWidth, sink.LastHeight));
-
-        var frame = sink.Last!;
-        static (byte r, byte g, byte b) Px(byte[] f, int x, int y) { var i = (y * 640 + x) * 4; return (f[i], f[i + 1], f[i + 2]); }
-        // DirectShow alttan üste okuduğu için ilk satır görüntünün altı (mavi), son satır üstü (kırmızı) olmalı.
-        var top = Px(frame, 320, 2);
-        var bottom = Px(frame, 320, 357);
-        Assert.True(top.b > 150 && top.r < 80, $"ilk satır mavi değil: {top}");
-        Assert.True(bottom.r > 150 && bottom.b < 80, $"son satır kırmızı değil: {bottom}");
-
-        var bmp = svc.PreviewBmp();
-        Assert.NotNull(bmp);
-        Assert.Equal((byte)'B', bmp![0]);
-        // Kare hızı saniyelik pencerelerle ölçülür; gönderici gerçek zamanlı 30 kare/sn yollar.
-        sw.Restart();
-        while (svc.Fps < 20 && sw.Elapsed < TimeSpan.FromSeconds(6)) await Task.Delay(200);
-        Assert.True(svc.Fps >= 20, $"fps {svc.Fps}");
-
-        // Telefon yayını kesince alıcı yeniden dinlemeye dönmeli.
-        sender.Kill();
-        sender.WaitForExit(5000);
-        sw.Restart();
-        while (svc.State == WebcamState.Receiving && sw.Elapsed < TimeSpan.FromSeconds(10)) await Task.Delay(100);
-        Assert.Equal(WebcamState.Waiting, svc.State);
     }
 }

@@ -36,6 +36,8 @@ export function ConnectSheet({ visible, onClose }: { visible: boolean; onClose: 
     setHost(settings.host);
     setPort(String(settings.port));
     setPassword(settings.password);
+    // İlk açılışta doğrudan kamera: StudioHub'ın QR'ını okutmak tek adım.
+    if (!settings.host && !isWeb && !panelMode) setScanning(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
@@ -169,6 +171,7 @@ export function ConnectSheet({ visible, onClose }: { visible: boolean; onClose: 
           setScanning(false);
           if ('token' in r) {
             void pair(r);
+            onClose();
             return;
           }
           setHost(r.host);
