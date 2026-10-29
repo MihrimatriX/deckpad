@@ -95,7 +95,7 @@ APK elle: `cd app && npx expo prebuild -p android && cd android && ./gradlew ass
 | | Doğrulandı | Henüz denenmedi |
 |---|---|---|
 | DeckPad | 25 test; APK Windows'ta derlenip telefona kuruldu; OBS paneli gerçek OBS 32.2.2'de tuşlarla çalıştı (bildirim) | Telefonda QR ile bağlanma, iOS |
-| StudioHub | 40 test; "OBS'i hazırla" dosyalarını gerçek OBS 30.0.2 okudu; Windows 11'de WPF kabuğu ve yönetim arayüzü açıldı | SendInput, Core Audio, PowerPoint, UAC; "OBS'i hazırla" OBS 32'de |
+| StudioHub | 41 test; "OBS'i hazırla" dosyalarını gerçek OBS 30.0.2 okudu; Windows 11'de WPF kabuğu ve yönetim arayüzü açıldı | SendInput, Core Audio, PowerPoint, UAC; "OBS'i hazırla" OBS 32'de |
 | OBS betiği | Gerçek OBS 30.0.2'de tüm adımlar, tekrar çalıştırma, efekt ve slayt tuşları | OBS 31+ |
 
 Ayrıntı ve sıradaki adımlar: [`memory-bank/progress.md`](memory-bank/progress.md), [`memory-bank/activeContext.md`](memory-bank/activeContext.md).

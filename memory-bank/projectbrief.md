@@ -10,10 +10,12 @@ Takımın tamamı dört parçadan oluşur, iki depoya ayrılmıştır:
 | Parça | Depo | Ne |
 |---|---|---|
 | DeckPad | **deckpad** `app/` | Telefon: düzenlenebilir tuş ızgarası, OBS ve bilgisayar eylemleri |
-| StudioHub | **deckpad** `studiohub/` | Windows: bilgisayar eylemleri, OBS'siz webcam alıcısı, masaüstü/OBS paneli, OBS'i hazırla |
+| StudioHub | **deckpad** `studiohub/` | Windows: bilgisayar eylemleri, masaüstü/OBS paneli, OBS'i hazırla |
 | OBS kurulum betiği | **deckpad** `obs-script/` | DeckPad'in beklediği sahne/kaynakları OBS'te kurar |
 | CamLink | camlink `app/` | Telefon: kablosuz kamera (SRT) |
 | CamLink OBS eklentisi | camlink `obs-plugin/` | OBS: telefon kamerası kaynağı + ağ duyurusu |
+
+deckpad deposunda webcam yok (K-016): yalnız telefondan OBS'i ve bilgisayarı yönetmek. OBS'siz webcam alıcısı camlink'e taşınacak.
 
 ## Kapsam
 
@@ -25,12 +27,12 @@ Takımın tamamı dört parçadan oluşur, iki depoya ayrılmıştır:
 - Aynı kod web'e derlenir; StudioHub bunu masaüstü penceresi ve OBS paneli olarak sunar. Düzen bilgisayarla eşitlenebilir.
 
 **StudioHub**
-- DeckPad yardımcısı (bilgisayar eylemleri), OBS'siz webcam ("CamLink Kamera" sanal kamerası), DeckPad masaüstü ve OBS paneli, "OBS'i hazırla".
-- Eşleştirme QR'ı, yerel ağ duyurusu, güvenlik duvarı kuralları, Windows ile başlatma, tepsi simgesi.
-- Çalışmaya hazır klasör: .NET kurulumu gerektirmez.
+- DeckPad yardımcısı (bilgisayar eylemleri), DeckPad masaüstü ve OBS paneli, "OBS'i hazırla".
+- Eşleştirme QR'ı, güvenlik duvarı kuralı, Windows ile başlatma, tepsi simgesi.
+- Tek komutla kurulum (`scripts/kur.ps1`); .NET kurulumu gerektirmez.
 
 **OBS betiği**
-- Ses efektleri sahnesi (tüm sahnelere iç içe), slayt gösterisi, telefon kamerası, önerilen sahneler. Tekrar çalıştırmak güvenli.
+- Ses efektleri sahnesi (tüm sahnelere iç içe), slayt gösterisi, önerilen sahneler. Tekrar çalıştırmak güvenli.
 
 ## Kapsam dışı (şimdilik)
 
