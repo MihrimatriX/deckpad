@@ -8,7 +8,7 @@ using StudioHub.Core.Server;
 
 namespace StudioHub.Platform;
 
-public sealed class WindowsPlatform(UnityCaptureSink sink, Action openPanel) : IHubPlatform
+public sealed class WindowsPlatform(Action openPanel) : IHubPlatform
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValue = "StudioHub";
@@ -46,8 +46,6 @@ public sealed class WindowsPlatform(UnityCaptureSink sink, Action openPanel) : I
         Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = Path.GetDirectoryName(exe)!, UseShellExecute = true })?.Dispose();
         return Task.CompletedTask;
     }
-
-    public bool DriverInstalled => sink.IsInstalled;
 
     public bool FirewallConfigured(HubSettings s)
     {

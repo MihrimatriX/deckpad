@@ -7,6 +7,7 @@ Telefonu OBS için Stream Deck'e çeviren Android uygulaması. OBS'in kendi WebS
 ## Hızlı başlangıç (APK)
 
 1. APK'yı telefona at ve kur (aşağıdaki **APK derleme** ile üretilir). Android "bilinmeyen kaynak" izni isterse ver.
+   Windows'ta kökten `.\scripts\kur.ps1 -Apk` APK'yı derleyip USB'deki telefona kendisi kurar.
 2. **StudioHub ile (önerilen):** bilgisayarda StudioHub'ı aç, **OBS'i hazırla**'ya bas. DeckPad'de **QR kodu okut** ile StudioHub'daki kodu okut. OBS ve bilgisayar eylemleri birlikte bağlanır.
 3. **Yalnızca OBS:** OBS'te **Araçlar › WebSocket Sunucu Ayarları**'nı aç, sunucuyu etkinleştir, **Bağlantı bilgilerini göster**'deki QR'ı okut.
 

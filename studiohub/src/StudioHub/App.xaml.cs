@@ -19,13 +19,45 @@ public partial class App : Application
     private Tray? _tray;
     private MainWindow? _main;
     private PanelWindow? _panel;
-    private UnityCaptureSink? _sink;
-    private readonly JobObject _job = new();
 
     public static string DataDir { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StudioHub");
 
+    /// <summary>Exe'ye gömülü yönetim arayüzü, DeckPad paneli ve OBS betiğinin çıkarıldığı klasör.</summary>
+    public static string WebDir { get; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StudioHub", "web");
+
     public HubHost Host => _host!;
+
+    /// <summary>
+    /// StudioHub tek exe olarak dağıtılır ve İndirilenler gibi herhangi bir klasörden çalışır; yanına dosya
+    /// yazılmaz. Gömülü dosyalar (csproj'da "web/" önekli EmbeddedResource) <see cref="WebDir"/>'e çıkarılır.
+    /// Exe değişmedikçe yeniden yazılmaz; değişince klasör baştan kurulur (eski panel dosyaları birikmez).
+    /// </summary>
+    private static void ExtractWebContent()
+    {
+        const string prefix = "web/";
+        var asm = typeof(App).Assembly;
+        // Deterministik derlemede MVID, gömülü dosyalar dahil derlemenin içeriğinden üretilir.
+        var stamp = asm.ManifestModule.ModuleVersionId.ToString();
+        var stampFile = Path.Combine(WebDir, ".surum");
+        if (File.Exists(stampFile) && File.ReadAllText(stampFile) == stamp) return;
+
+        try { if (Directory.Exists(WebDir)) Directory.Delete(WebDir, recursive: true); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { Log("Eski arayüz klasörü silinemedi: " + e.Message); }
+        foreach (var name in asm.GetManifestResourceNames())
+        {
+            if (!name.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            // Alt klasörler MSBuild'in RecursiveDir'inden ters eğik çizgiyle gelir.
+            var target = Path.Combine(WebDir, name[prefix.Length..].Replace('\\', '/'));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            using var src = asm.GetManifestResourceStream(name)!;
+            using var dst = File.Create(target);
+            src.CopyTo(dst);
+        }
+        // Damga en son yazılır: yarıda kalan çıkarma bir sonraki açılışta baştan yapılır.
+        File.WriteAllText(stampFile, stamp);
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -59,27 +91,31 @@ public partial class App : Application
         };
 
         Directory.CreateDirectory(DataDir);
-        var baseDir = AppContext.BaseDirectory;
-        _sink = new UnityCaptureSink("CamLink Kamera");
-        var platform = new WindowsPlatform(_sink, () => Dispatcher.Invoke(ShowPanel));
+        try
+        {
+            ExtractWebContent();
+        }
+        catch (Exception ex)
+        {
+            Log("Arayüz dosyaları çıkarılamadı: " + ex);
+            MessageBox.Show($"Arayüz dosyaları {WebDir} klasörüne yazılamadı.\n\n{ex.Message}", "StudioHub başlatılamadı", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+            return;
+        }
+        var platform = new WindowsPlatform(() => Dispatcher.Invoke(ShowPanel));
         var obs = ObsConfigurator.ForCurrentUser(platform.IsObsRunning);
-        var plugin = Path.Combine(baseDir, "obs", "obs-plugin", "camlink");
-        var script = Path.Combine(baseDir, "obs", "obs-script", "deckpad-camlink.lua");
+        // "OBS'i hazırla" betiği OBS'in kendi betik klasörüne kopyalar; OBS bu klasöre bağlı kalmaz.
+        var script = Path.Combine(WebDir, "obs", "deckpad.lua");
 
         _host = new HubHost(new HubOptions
         {
             SettingsPath = Path.Combine(DataDir, "settings.json"),
             DeckPath = Path.Combine(DataDir, "deck.json"),
-            PanelRoot = Path.Combine(baseDir, "panel"),
-            AdminRoot = Path.Combine(baseDir, "hub"),
-            FfmpegPath = Path.Combine(baseDir, "ffmpeg", "ffmpeg.exe"),
-            PluginSource = Directory.Exists(plugin) ? plugin : null,
+            PanelRoot = Path.Combine(WebDir, "panel"),
+            AdminRoot = Path.Combine(WebDir, "hub"),
+            ContentRoot = WebDir,
             ScriptSource = File.Exists(script) ? script : null,
-        }, platform, new WindowsPc(), _sink, obs);
-
-        var idle = new IdleFrames();
-        _host.Webcam.IdleFrame = idle.Get;
-        _host.Webcam.ProcessStarted = _job.Add;
+        }, platform, new WindowsPc(), obs);
 
         try
         {
@@ -131,13 +167,6 @@ public partial class App : Application
             ShowPanel();
             _panel!.Topmost = value;
         }
-    }
-
-    public async Task ToggleWebcamAsync()
-    {
-        if (_host!.Webcam.State == Core.Webcam.WebcamState.Stopped) _host.Webcam.Start();
-        else await _host.Webcam.StopAsync();
-        _tray?.Update();
     }
 
     public bool IsQuitting { get; private set; }

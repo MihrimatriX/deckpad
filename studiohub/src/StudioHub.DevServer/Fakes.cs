@@ -2,7 +2,6 @@ using StudioHub.Core;
 using StudioHub.Core.Helper;
 using StudioHub.Core.Obs;
 using StudioHub.Core.Server;
-using StudioHub.Core.Webcam;
 
 namespace StudioHub.Dev;
 
@@ -48,27 +47,7 @@ public sealed class FakePc : IPcPlatform
     public Task<string> SlideAsync(SlideCommand cmd) { Log("slide " + cmd); return Task.FromResult("Ön plandaki pencere"); }
 }
 
-public sealed class FakeSink : IFrameSink
-{
-    public long Frames;
-    public int LastWidth, LastHeight;
-    public byte[]? Last;
-    public bool IsInstalled { get; set; } = true;
-    public bool HasConsumer { get; set; }
-    public string DeviceName => "CamLink Kamera";
-
-    public void Write(ReadOnlySpan<byte> rgba, int width, int height)
-    {
-        Interlocked.Increment(ref Frames);
-        LastWidth = width;
-        LastHeight = height;
-        Last = rgba.ToArray();
-    }
-
-    public void Dispose() { }
-}
-
-public sealed class FakePlatform(FakeSink sink) : IHubPlatform
+public sealed class FakePlatform : IHubPlatform
 {
     public bool ObsRunning { get; set; }
     public List<ElevatedRequest> Elevated { get; } = [];
@@ -76,23 +55,14 @@ public sealed class FakePlatform(FakeSink sink) : IHubPlatform
     public bool IsObsRunning() => ObsRunning;
     public bool CanLaunchObs => true;
     public Task LaunchObsAsync() { Console.WriteLine("[platform] OBS başlatılıyor"); return Task.CompletedTask; }
-    public bool DriverInstalled => sink.IsInstalled;
     public bool Firewall { get; set; }
     public bool FirewallConfigured(HubSettings s) => Firewall;
 
     public Task<IReadOnlyList<SetupStep>> RunElevatedAsync(ElevatedRequest req)
     {
         Elevated.Add(req);
-        var steps = new List<SetupStep>();
-        if (req.InstallDriver) { sink.IsInstalled = true; steps.Add(new("driver", "Sanal kamera sürücüsü", true, $"\"{req.DriverName}\" kuruldu")); }
-        if (req.UninstallDriver) { sink.IsInstalled = false; steps.Add(new("driver", "Sanal kamera sürücüsü", true, "Kaldırıldı")); }
-        if (req.FirewallTcp != null || req.FirewallUdp != null) { Firewall = true; steps.Add(new("firewall", "Güvenlik duvarı", true, "İzinler eklendi")); }
-        if (req.PluginSource != null && req.PluginTarget != null)
-        {
-            ObsConfigurator.CopyDir(req.PluginSource, req.PluginTarget);
-            steps.Add(new("plugin", "CamLink OBS eklentisi", true, "Kuruldu"));
-        }
-        return Task.FromResult<IReadOnlyList<SetupStep>>(steps);
+        Firewall = true;
+        return Task.FromResult<IReadOnlyList<SetupStep>>([new("firewall", "Güvenlik duvarı", true, "İzinler eklendi")]);
     }
 
     public bool Autostart { get; set; }

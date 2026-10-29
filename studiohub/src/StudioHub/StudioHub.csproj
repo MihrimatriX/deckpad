@@ -7,7 +7,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>StudioHub</RootNamespace>
     <AssemblyName>StudioHub</AssemblyName>
@@ -16,11 +15,12 @@
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <Version>1.0.0</Version>
     <Product>StudioHub</Product>
-    <Description>DeckPad ve CamLink için Windows yardımcısı</Description>
+    <Description>DeckPad için Windows yardımcısı</Description>
     <SatelliteResourceLanguages>tr;en</SatelliteResourceLanguages>
   </PropertyGroup>
 
-  <!-- Tek dosya, .NET kurulumu gerektirmeyen yayın -->
+  <!-- Tek dosya, .NET kurulumu gerektirmeyen yayın. Yalnız yerel DLL'ler (WPF, WebView2Loader) açılışta
+       %TEMP%\.net\StudioHub altına çıkarılır; yönetilen DLL'ler exe'den yüklenir. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
@@ -53,15 +53,14 @@
     <Resource Include="Assets\BarlowSemiCondensed_700Bold.ttf" />
   </ItemGroup>
 
-  <!-- Uygulamanın yanında duran dosyalar: arayüzler, FFmpeg, sanal kamera sürücüsü, OBS paketleri -->
+  <!-- Yönetim arayüzü, DeckPad paneli ve OBS kurulum betiği exe'nin içine gömülür (dağıtılan tek dosya).
+       Açılışta %LOCALAPPDATA%\StudioHub\web altına çıkarılır: App.ExtractWebContent, "web/" önekli adlar.
+       Not: Dosya adı "ad.<kültür>.uzantı" biçimindeyse (ör. x.tr.js) MSBuild onu uydu derlemesine taşır; böyle ad kullanma. -->
   <ItemGroup>
-    <Content Include="..\..\web\hub\**\*" LinkBase="hub" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
-    <Content Include="..\..\web\panel\**\*" LinkBase="panel" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
-    <Content Include="..\..\vendor\ffmpeg\**\*" LinkBase="ffmpeg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
-    <Content Include="..\..\vendor\driver\**\*" LinkBase="driver" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
-    <Content Include="..\..\vendor\obs\**\*" LinkBase="obs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <EmbeddedResource Include="..\..\web\hub\**\*" LogicalName="web/hub/%(RecursiveDir)%(Filename)%(Extension)" Visible="false" />
+    <EmbeddedResource Include="..\..\web\panel\**\*" LogicalName="web/panel/%(RecursiveDir)%(Filename)%(Extension)" Visible="false" />
     <!-- OBS kurulum betiği deponun kökündeki obs-script klasöründe (tek kaynak) -->
-    <Content Include="..\..\..\obs-script\*.lua" LinkBase="obs\obs-script" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <EmbeddedResource Include="..\..\..\obs-script\*.lua" LogicalName="web/obs/%(Filename)%(Extension)" Visible="false" />
   </ItemGroup>
 
 </Project>
