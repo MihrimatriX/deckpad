@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0B1530" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#E6EBF5" media="(prefers-color-scheme: light)">
+  <title>DeckPad ve StudioHub</title>
+  <meta name="description" content="Telefonu OBS için tuş takımına çeviren Android uygulaması DeckPad ve Windows yardımcısı StudioHub. Üç adımda kurulum.">
+  <meta property="og:title" content="DeckPad ve StudioHub">
+  <meta property="og:description" content="Telefonunu OBS'in tuş takımına çevir: sahne, kayıt, yayın, ses efektleri ve sunum. Üç adımda kurulum.">
+  <meta property="og:image" content="https://mihrimatrix.github.io/deckpad/screenshots/deckpad-telefon.png">
+  <meta property="og:url" content="https://mihrimatrix.github.io/deckpad/">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='1' y='1' width='30' height='30' rx='8' fill='%23050C1F'/%3E%3Crect x='5' y='5' width='22' height='20' rx='5' fill='%232457D6'/%3E%3Crect x='12' y='8' width='8' height='2' rx='1' fill='%2357D2FF'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
+  <style>
+    /* DeckPad'in donanım dili: eloksal gövde, gömme yuvalar, basılan tuş kapakları, LED'ler.
+       Renkler app/src/theme.ts ve studiohub/web/hub/app.css ile aynı. Tuş kapakları ve durum camı
+       iki temada da aynı kalır (fiziksel parça); gövde, plaka ve metin temaya göre değişir. */
+    :root {
+      --page-top: #13224A;
+      --page: #0B1530;
+      --page-bottom: #08112A;
+      --plate-top: #13234A;
+      --plate: #0E1A3A;
+      --well: #050C1F;
+      --well-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.75), 0 1px 0 rgba(160, 196, 255, 0.14);
+      --bevel-light: rgba(160, 196, 255, 0.14);
+      --bevel-dark: rgba(0, 4, 14, 0.65);
+      --plate-shadow: 0 10px 24px rgba(0, 3, 12, 0.45);
+      --line: rgba(43, 67, 116, 0.55);
+      --text: #DCE7FF;
+      --strong: #FFFFFF;
+      --muted: #7F93BD;
+      --link: #57D2FF;
+      --warn-ink: #FFD58A;
+      --accent: #57D2FF;
+      --live: #FF3B4E;
+      --warning: #FFB020;
+      --success: #2EE59D;
+      --key-font: "Barlow Semi Condensed", Barlow, system-ui, sans-serif;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --page-top: #F1F4FA;
+        --page: #E6EBF5;
+        --page-bottom: #D9E0EE;
+        --plate-top: #FBFCFE;
+        --plate: #EEF2F9;
+        --well: #CDD6E9;
+        --well-shadow: inset 0 2px 4px rgba(16, 34, 80, 0.3), 0 1px 0 rgba(255, 255, 255, 0.9);
+        --bevel-light: rgba(255, 255, 255, 0.95);
+        --bevel-dark: rgba(16, 34, 80, 0.14);
+        --plate-shadow: 0 8px 20px rgba(16, 34, 80, 0.12);
+        --line: rgba(16, 34, 80, 0.14);
+        --text: #14224A;
+        --strong: #08112A;
+        --muted: #3F4E74;
+        --link: #1A4FCC;
+        --warn-ink: #7A4A00;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--page-bottom); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font: 400 16px/1.55 Barlow, system-ui, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, var(--page-top), var(--page) 420px, var(--page-bottom));
+      -webkit-font-smoothing: antialiased;
+      overflow-wrap: break-word;
+    }
+    a { color: var(--link); text-underline-offset: 2px; }
+    b { font-weight: 600; color: var(--strong); }
+    p { margin: 0 0 10px; }
+    h1, h2, h3 { font-family: var(--key-font); font-weight: 700; color: var(--strong); margin: 0; }
+    img { display: block; max-width: 100%; height: auto; }
+    svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .chassis { max-width: 1080px; margin: 0 auto; padding: 16px; }
+
+    /* Durum camı: bir LCD gibi iki temada da koyu */
+    .display {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px;
+      padding: 10px 16px; margin-bottom: 16px;
+      background: #040A18; border: 1px solid #1C2D52; border-radius: 14px;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7), 0 1px 0 var(--bevel-light);
+      color: #DCE7FF;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; font: 700 20px/1 var(--key-font); color: var(--accent); letter-spacing: 0.02em; }
+    .readouts { display: flex; flex-wrap: wrap; gap: 6px 18px; flex: 1; }
+    .readout { display: flex; align-items: center; gap: 7px; font: 600 15px/1 var(--key-font); white-space: nowrap; }
+    .readout-k { color: #7F93BD; font: 400 13px/1 Barlow, sans-serif; }
+    .display a { color: #DCE7FF; font: 600 15px/1 var(--key-font); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .display a:hover { color: var(--accent); }
+    .display a svg { width: 16px; height: 16px; }
+
+    .led { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #1D2A47; box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6); }
+    .led.on { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .led.warn { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+    .led.info { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+    /* Plakalar */
+    .plate {
+      padding: 22px 20px 20px; margin-bottom: 16px; border-radius: 20px;
+      background: linear-gradient(180deg, var(--plate-top), var(--plate) 60%);
+      border: 1px solid var(--bevel-dark); border-top-color: var(--bevel-light);
+      box-shadow: var(--plate-shadow), inset 0 1px 0 var(--bevel-light);
+    }
+    .plate > h2 { font-size: 24px; line-height: 1.2; margin-bottom: 14px; }
+    .well { background: var(--well); border-radius: 14px; box-shadow: var(--well-shadow); }
+    .muted { color: var(--muted); }
+
+    .hero h1 { font-size: clamp(32px, 6.4vw, 54px); line-height: 1.04; letter-spacing: -0.005em; max-width: 17ch; }
+    .lede { margin: 14px 0 22px; font-size: 18px; max-width: 60ch; }
+
+    /* Tuş kapağı renkleri (app/src/theme.ts buttonColors) ve koyu etekleri */
+    .c-navy { --c: #1A2D52; --s: #091327; }
+    .c-blue { --c: #2457D6; --s: #0E2668; }
+    .c-teal { --c: #0F7891; --s: #063540; }
+    .c-red { --c: #C0283A; --s: #5B0D17; }
+    .c-purple { --c: #6D3BE0; --s: #2E1470; }
+    .c-amber { --c: #B07A12; --s: #4A3205; }
+    .c-green { --c: #16834A; --s: #083A20; }
+    .c-slate { --c: #3A4660; --s: #161C2A; }
+
+    /* Büyük tuş: gömme yuva + basılınca çöken kapak + LED şeridi */
+    .cap { display: block; padding: 6px; border-radius: 20px; background: var(--well); box-shadow: var(--well-shadow); color: #fff; text-decoration: none; }
+    .cap-face {
+      position: relative; display: flex; align-items: center; gap: 14px;
+      min-height: 82px; padding: 18px 18px 14px; margin-bottom: 6px; border-radius: 15px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.18)) var(--c);
+      box-shadow: 0 6px 0 var(--s), 0 8px 14px rgba(0, 2, 10, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+      transition: transform 70ms ease-out, box-shadow 70ms ease-out, filter 120ms;
+    }
+    .cap-face::before {
+      content: ""; position: absolute; top: 7px; left: 40%; right: 40%; height: 3px; border-radius: 3px;
+      background: var(--accent); box-shadow: 0 0 10px var(--accent);
+    }
+    .cap:hover .cap-face { filter: brightness(1.08); }
+    .cap:active .cap-face { transform: translateY(5px); box-shadow: 0 1px 0 var(--s), 0 2px 4px rgba(0, 2, 10, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+    .cap-face svg { width: 34px; height: 34px; stroke-width: 1.6; }
+    .cap-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .cap-label { font: 700 21px/1.1 var(--key-font); }
+    .cap-sub { font: 500 14px/1.2 Barlow, sans-serif; color: rgba(255, 255, 255, 0.78); }
+
+    /* Kurulum adımları */
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .step { min-width: 0; display: flex; flex-direction: column; }
+    .step-k { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font: 600 15px/1 var(--key-font); color: var(--muted); }
+    .step-n {
+      display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px;
+      background: #040A18; color: var(--accent); font: 700 15px/1 var(--key-font);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 0 var(--bevel-light);
+    }
+    .step > p { margin: 12px 2px 0; }
+    .after { margin: 18px 2px 0; }
+
+    .qr-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+    .qr-bezel {
+      flex: none; padding: 8px; border-radius: 16px;
+      background: linear-gradient(180deg, #1B2C55, #0A1430);
+      box-shadow: inset 0 1px 0 rgba(160, 196, 255, 0.14), 0 6px 14px rgba(0, 0, 0, 0.35);
+    }
+    .qr { display: block; width: 132px; height: 132px; border-radius: 8px; }
+    .qr-row p { margin: 0; font-size: 14px; }
+
+    /* Notlar: LED'li satırlar */
+    .notes { list-style: none; margin: 0; padding: 4px; display: grid; grid-template-columns: 1fr 1fr; }
+    .notes li { display: grid; grid-template-columns: auto 1fr; align-content: start; gap: 4px 12px; padding: 14px; border-top: 1px solid var(--line); }
+    .notes li:nth-child(-n+2) { border-top: 0; }
+    .notes .led { margin-top: 7px; }
+    .notes h3 { font-size: 18px; line-height: 1.25; }
+    .notes p { grid-column: 2; margin: 0; color: var(--muted); }
+    .notes p b { color: var(--text); }
+
+    /* Ekran görüntüleri */
+    .shots { margin: 0; }
+    .shot-well { padding: 8px; overflow-x: auto; overscroll-behavior-x: contain; }
+    .shot-well img { width: 100%; min-width: 860px; border-radius: 8px; }
+    figcaption { margin-top: 10px; font-size: 14px; color: var(--muted); }
+    .swipe { display: none; }
+    .desk { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: center; margin-top: 22px; }
+    .desk .shot-well { overflow: hidden; }
+    .desk .shot-well img { min-width: 0; }
+    .desk h3 { font-size: 21px; margin-bottom: 8px; }
+
+    /* Özellikler: her biri uygulamadaki renkte küçük bir tuş */
+    .features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px 24px; }
+    .features li { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-content: start; }
+    .mini { grid-row: span 2; width: 54px; height: 54px; padding: 4px; border-radius: 14px; background: var(--well); box-shadow: var(--well-shadow); }
+    .mini span {
+      display: grid; place-items: center; height: 42px; border-radius: 10px; color: #fff;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.18)) var(--c);
+      box-shadow: 0 4px 0 var(--s), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+    .features h3 { font-size: 19px; line-height: 1.2; align-self: end; }
+    .features p { margin: 0; color: var(--muted); }
+
+    /* Küçük tuşlar (bağlantılar) */
+    .keys { display: flex; flex-wrap: wrap; gap: 12px; }
+    .key {
+      display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; margin-bottom: 4px;
+      border-radius: 11px; color: #fff; text-decoration: none; font: 600 16px/1 var(--key-font);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.16)) var(--c);
+      box-shadow: 0 4px 0 var(--s), 0 6px 12px rgba(0, 2, 10, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      transition: transform 70ms ease-out, box-shadow 70ms ease-out, filter 120ms;
+    }
+    .key:hover { filter: brightness(1.08); }
+    .key:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--s), 0 2px 4px rgba(0, 2, 10, 0.4); }
+    .key svg { width: 17px; height: 17px; }
+    footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; }
+    footer p { margin: 0; max-width: 60ch; }
+
+    @media (max-width: 860px) {
+      .steps, .notes, .desk { grid-template-columns: 1fr; }
+      .notes li:nth-child(2) { border-top: 1px solid var(--line); }
+      .features { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 720px) {
+      .qr-row { display: none; }
+      .swipe { display: inline; }
+    }
+    @media (max-width: 560px) {
+      .features { grid-template-columns: 1fr; }
+      .readout:not(.keep) { display: none; }
+      .display { padding: 10px 12px; gap: 10px; }
+      .readouts { flex: none; }
+      .display a { margin-left: auto; }
+      .plate { padding: 18px 14px 16px; }
+      .lede { font-size: 17px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="chassis">
+    <header class="display">
+      <span class="brand"><span class="led on"></span>DeckPad</span>
+      <div class="readouts">
+        <span class="readout"><span class="readout-k">Telefon</span>Android</span>
+        <span class="readout"><span class="readout-k">Bilgisayar</span>Windows</span>
+        <span class="readout"><span class="readout-k">OBS</span>30+</span>
+        <span class="readout keep"><span class="led warn"></span>Erken sürüm</span>
+      </div>
+      <a href="https://github.com/MihrimatriX/deckpad">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>Kaynak kod
+      </a>
+    </header>
+
+    <main>
+      <section class="plate hero" aria-labelledby="t-hero">
+        <h1 id="t-hero">Telefonunu OBS'in tuş takımına çevir.</h1>
+        <p class="lede"><b>DeckPad</b> sahneleri değiştirir, kaydı ve yayını yönetir, ses efekti çalar. Bilgisayarda <b>StudioHub</b> açıksa slaytları ilerletir, klavye kısayolu ve medya tuşu gönderir. Kurulum üç adım.</p>
+
+        <ol class="steps">
+          <li class="step">
+            <p class="step-k"><span class="step-n">1</span>Bilgisayarda</p>
+            <a class="cap c-navy" href="https://obsproject.com/download">
+              <span class="cap-face">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><circle cx="12" cy="14.5" r="2.5"/></svg>
+                <span class="cap-text"><span class="cap-label">OBS Studio'yu kur</span><span class="cap-sub">obsproject.com · ücretsiz</span></span>
+              </span>
+            </a>
+            <p>OBS 30 ya da üstü gerekir. Zaten kuruluysa bu adımı geç.</p>
+          </li>
+
+          <li class="step">
+            <p class="step-k"><span class="step-n">2</span>Bilgisayarda</p>
+            <a class="cap c-blue" href="https://github.com/MihrimatriX/deckpad/releases/latest/download/StudioHub.exe">
+              <span class="cap-face">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M12 7v5M9.5 9.5 12 12l2.5-2.5"/></svg>
+                <span class="cap-text"><span class="cap-label">StudioHub.exe'yi indir</span><span class="cap-sub">Windows · 64 bit · kurulum yok</span></span>
+              </span>
+            </a>
+            <p>İndirdiğin dosyayı aç. OBS kapalıyken <b>OBS'i hazırla</b>'ya, sonra <b>OBS'i aç</b>'a bas. Bu, OBS'in WebSocket sunucusunu açar; DeckPad panelini ve ses efektleriyle slaytları kuran betiği OBS'e ekler.</p>
+          </li>
+
+          <li class="step">
+            <p class="step-k"><span class="step-n">3</span>Telefonda</p>
+            <a class="cap c-teal" href="https://github.com/MihrimatriX/deckpad/releases/latest/download/DeckPad.apk">
+              <span class="cap-face">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18.5h2M12 6.5v6M9.5 10l2.5 2.5 2.5-2.5"/></svg>
+                <span class="cap-text"><span class="cap-label">DeckPad.apk'yı indir</span><span class="cap-sub">Android · telefona</span></span>
+              </span>
+            </a>
+            <p>APK'yı telefonda açıp kur. DeckPad'i aç, <b>QR kodu okut</b>'a dokun ve StudioHub penceresindeki kodu göster. OBS ve bilgisayar birlikte bağlanır.</p>
+            <div class="qr-row">
+              <div class="qr-bezel">
+                <!-- DeckPad.apk bağlantısı. app/node_modules/toqr ile bir kez üretildi; adres her sürümde aynı kalır. -->
+                <svg class="qr" viewBox="0 0 45 45" shape-rendering="crispEdges" role="img" aria-label="DeckPad.apk indirme bağlantısının QR kodu"><rect width="45" height="45" fill="#EEF3FF"/><path fill="#0B1530" stroke="none" d="M4 4h7v1h-7zM12 4h1v1h-1zM15 4h1v1h-1zM20 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM27 4h1v1h-1zM32 4h1v1h-1zM34 4h7v1h-7zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h2v1h-2zM15 5h1v1h-1zM17 5h2v1h-2zM23 5h2v1h-2zM26 5h5v1h-5zM32 5h1v1h-1zM34 5h1v1h-1zM40 5h1v1h-1zM4 6h1v1h-1zM6 6h3v1h-3zM10 6h1v1h-1zM14 6h7v1h-7zM22 6h1v1h-1zM24 6h1v1h-1zM27 6h1v1h-1zM29 6h3v1h-3zM34 6h1v1h-1zM36 6h3v1h-3zM40 6h1v1h-1zM4 7h1v1h-1zM6 7h3v1h-3zM10 7h1v1h-1zM12 7h1v1h-1zM15 7h1v1h-1zM19 7h1v1h-1zM21 7h1v1h-1zM23 7h1v1h-1zM26 7h1v1h-1zM28 7h4v1h-4zM34 7h1v1h-1zM36 7h3v1h-3zM40 7h1v1h-1zM4 8h1v1h-1zM6 8h3v1h-3zM10 8h1v1h-1zM18 8h2v1h-2zM21 8h1v1h-1zM23 8h1v1h-1zM25 8h1v1h-1zM28 8h5v1h-5zM34 8h1v1h-1zM36 8h3v1h-3zM40 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM13 9h1v1h-1zM18 9h1v1h-1zM20 9h1v1h-1zM23 9h4v1h-4zM28 9h1v1h-1zM30 9h1v1h-1zM32 9h1v1h-1zM34 9h1v1h-1zM40 9h1v1h-1zM4 10h7v1h-7zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM32 10h1v1h-1zM34 10h7v1h-7zM12 11h1v1h-1zM14 11h1v1h-1zM18 11h1v1h-1zM20 11h3v1h-3zM26 11h2v1h-2zM30 11h3v1h-3zM4 12h1v1h-1zM6 12h2v1h-2zM9 12h3v1h-3zM14 12h1v1h-1zM16 12h1v1h-1zM19 12h2v1h-2zM23 12h1v1h-1zM27 12h1v1h-1zM30 12h2v1h-2zM34 12h1v1h-1zM37 12h1v1h-1zM39 12h2v1h-2zM4 13h1v1h-1zM7 13h2v1h-2zM11 13h2v1h-2zM14 13h2v1h-2zM17 13h1v1h-1zM19 13h3v1h-3zM25 13h3v1h-3zM29 13h1v1h-1zM32 13h1v1h-1zM35 13h1v1h-1zM37 13h1v1h-1zM39 13h1v1h-1zM5 14h1v1h-1zM7 14h6v1h-6zM14 14h2v1h-2zM19 14h1v1h-1zM27 14h3v1h-3zM32 14h1v1h-1zM36 14h3v1h-3zM6 15h1v1h-1zM11 15h1v1h-1zM14 15h1v1h-1zM16 15h2v1h-2zM19 15h1v1h-1zM22 15h1v1h-1zM28 15h4v1h-4zM33 15h2v1h-2zM37 15h2v1h-2zM4 16h2v1h-2zM7 16h1v1h-1zM10 16h7v1h-7zM18 16h1v1h-1zM21 16h1v1h-1zM23 16h1v1h-1zM26 16h1v1h-1zM28 16h3v1h-3zM33 16h2v1h-2zM36 16h5v1h-5zM6 17h4v1h-4zM11 17h2v1h-2zM15 17h1v1h-1zM17 17h4v1h-4zM22 17h2v1h-2zM26 17h1v1h-1zM28 17h4v1h-4zM33 17h5v1h-5zM40 17h1v1h-1zM4 18h1v1h-1zM8 18h3v1h-3zM12 18h5v1h-5zM18 18h1v1h-1zM21 18h3v1h-3zM26 18h1v1h-1zM29 18h2v1h-2zM32 18h2v1h-2zM36 18h1v1h-1zM38 18h2v1h-2zM4 19h1v1h-1zM6 19h2v1h-2zM11 19h1v1h-1zM13 19h1v1h-1zM17 19h1v1h-1zM19 19h4v1h-4zM24 19h2v1h-2zM27 19h2v1h-2zM33 19h4v1h-4zM39 19h2v1h-2zM4 20h1v1h-1zM7 20h4v1h-4zM12 20h1v1h-1zM15 20h2v1h-2zM20 20h3v1h-3zM24 20h4v1h-4zM29 20h1v1h-1zM35 20h1v1h-1zM37 20h3v1h-3zM5 21h2v1h-2zM11 21h1v1h-1zM13 21h1v1h-1zM16 21h2v1h-2zM20 21h1v1h-1zM24 21h1v1h-1zM26 21h3v1h-3zM31 21h1v1h-1zM33 21h2v1h-2zM37 21h4v1h-4zM5 22h1v1h-1zM8 22h1v1h-1zM10 22h4v1h-4zM17 22h4v1h-4zM22 22h1v1h-1zM25 22h2v1h-2zM28 22h1v1h-1zM30 22h2v1h-2zM35 22h1v1h-1zM39 22h2v1h-2zM4 23h3v1h-3zM11 23h2v1h-2zM17 23h1v1h-1zM21 23h1v1h-1zM24 23h1v1h-1zM27 23h2v1h-2zM32 23h1v1h-1zM36 23h2v1h-2zM39 23h1v1h-1zM4 24h1v1h-1zM6 24h3v1h-3zM10 24h2v1h-2zM13 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM20 24h4v1h-4zM25 24h1v1h-1zM28 24h1v1h-1zM32 24h2v1h-2zM35 24h3v1h-3zM40 24h1v1h-1zM6 25h1v1h-1zM8 25h2v1h-2zM11 25h1v1h-1zM13 25h1v1h-1zM16 25h2v1h-2zM20 25h1v1h-1zM22 25h6v1h-6zM29 25h1v1h-1zM32 25h2v1h-2zM37 25h1v1h-1zM4 26h1v1h-1zM6 26h3v1h-3zM10 26h3v1h-3zM15 26h1v1h-1zM17 26h1v1h-1zM21 26h1v1h-1zM27 26h1v1h-1zM29 26h1v1h-1zM32 26h2v1h-2zM35 26h1v1h-1zM4 27h2v1h-2zM8 27h1v1h-1zM12 27h1v1h-1zM14 27h1v1h-1zM18 27h3v1h-3zM22 27h1v1h-1zM24 27h1v1h-1zM29 27h2v1h-2zM33 27h2v1h-2zM36 27h4v1h-4zM7 28h1v1h-1zM10 28h1v1h-1zM16 28h4v1h-4zM22 28h3v1h-3zM26 28h6v1h-6zM33 28h2v1h-2zM36 28h1v1h-1zM38 28h3v1h-3zM6 29h1v1h-1zM8 29h2v1h-2zM11 29h2v1h-2zM14 29h1v1h-1zM16 29h3v1h-3zM20 29h4v1h-4zM27 29h6v1h-6zM34 29h3v1h-3zM39 29h2v1h-2zM5 30h1v1h-1zM8 30h1v1h-1zM10 30h1v1h-1zM12 30h4v1h-4zM17 30h4v1h-4zM23 30h4v1h-4zM28 30h1v1h-1zM30 30h1v1h-1zM33 30h1v1h-1zM35 30h1v1h-1zM37 30h1v1h-1zM39 30h1v1h-1zM4 31h1v1h-1zM6 31h1v1h-1zM8 31h2v1h-2zM12 31h2v1h-2zM16 31h2v1h-2zM20 31h1v1h-1zM25 31h1v1h-1zM27 31h1v1h-1zM30 31h1v1h-1zM32 31h1v1h-1zM34 31h4v1h-4zM39 31h1v1h-1zM7 32h1v1h-1zM9 32h2v1h-2zM12 32h2v1h-2zM15 32h1v1h-1zM18 32h3v1h-3zM22 32h1v1h-1zM24 32h3v1h-3zM31 32h6v1h-6zM38 32h3v1h-3zM12 33h4v1h-4zM19 33h1v1h-1zM21 33h1v1h-1zM26 33h4v1h-4zM31 33h2v1h-2zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h1v1h-1zM4 34h7v1h-7zM12 34h1v1h-1zM14 34h1v1h-1zM17 34h5v1h-5zM25 34h2v1h-2zM32 34h1v1h-1zM34 34h1v1h-1zM36 34h1v1h-1zM38 34h3v1h-3zM4 35h1v1h-1zM10 35h1v1h-1zM12 35h2v1h-2zM15 35h2v1h-2zM18 35h3v1h-3zM24 35h1v1h-1zM27 35h1v1h-1zM31 35h2v1h-2zM36 35h1v1h-1zM39 35h1v1h-1zM4 36h1v1h-1zM6 36h3v1h-3zM10 36h1v1h-1zM13 36h1v1h-1zM18 36h2v1h-2zM22 36h1v1h-1zM25 36h3v1h-3zM30 36h1v1h-1zM32 36h6v1h-6zM39 36h2v1h-2zM4 37h1v1h-1zM6 37h3v1h-3zM10 37h1v1h-1zM12 37h3v1h-3zM16 37h4v1h-4zM22 37h3v1h-3zM27 37h3v1h-3zM31 37h1v1h-1zM33 37h2v1h-2zM36 37h1v1h-1zM38 37h1v1h-1zM40 37h1v1h-1zM4 38h1v1h-1zM6 38h3v1h-3zM10 38h1v1h-1zM12 38h2v1h-2zM15 38h1v1h-1zM20 38h3v1h-3zM24 38h1v1h-1zM27 38h1v1h-1zM32 38h3v1h-3zM36 38h3v1h-3zM4 39h1v1h-1zM10 39h1v1h-1zM13 39h4v1h-4zM20 39h1v1h-1zM24 39h1v1h-1zM28 39h3v1h-3zM33 39h1v1h-1zM35 39h4v1h-4zM4 40h7v1h-7zM12 40h3v1h-3zM16 40h1v1h-1zM19 40h1v1h-1zM21 40h6v1h-6zM28 40h4v1h-4zM34 40h1v1h-1zM36 40h5v1h-5z"/></svg>
+              </div>
+              <p class="muted">Bilgisayardan okuyorsan bu kodu telefonun kamerasıyla okut; APK doğrudan iner.</p>
+            </div>
+          </li>
+        </ol>
+
+        <p class="after muted">İlk bağlantıda <b>Sahneler</b> ve <b>Ses efektleri</b> sayfaları OBS'teki sahne ve kaynaklarla dolar. Sonraki açılışlarda DeckPad kendisi bağlanır.</p>
+      </section>
+
+      <section class="plate" aria-labelledby="t-notes">
+        <h2 id="t-notes">Kurarken karşına çıkabilecekler</h2>
+        <ul class="notes well">
+          <li>
+            <span class="led warn"></span><h3>Windows SmartScreen uyarısı</h3>
+            <p>StudioHub imzasız. "Windows bilgisayarınızı korudu" derse <b>Ek bilgi › Yine de çalıştır</b>.</p>
+          </li>
+          <li>
+            <span class="led warn"></span><h3>Bilinmeyen kaynak ve Play Protect</h3>
+            <p>DeckPad Play Store'dan gelmiyor ve hata ayıklama anahtarıyla imzalı. Android, APK'yı açtığın uygulamaya (tarayıcı ya da Dosyalar) bilinmeyen uygulama yükleme izni ister; Play Protect uyarı gösterebilir.</p>
+          </li>
+          <li>
+            <span class="led warn"></span><h3>Güvenlik duvarı</h3>
+            <p>Windows izin sorarsa <b>Özel ağlar</b>'ı işaretleyip izin ver. Telefon bağlanamıyorsa StudioHub › Ayarlar › Güvenlik duvarı › <b>İzin ver</b>.</p>
+          </li>
+          <li>
+            <span class="led info"></span><h3>Hangi telefonlar</h3>
+            <p>64 bit ARM (arm64-v8a) işlemcili Android telefonlar; bugünkü telefonların neredeyse hepsi böyle. iOS sürümü yok.</p>
+          </li>
+          <li>
+            <span class="led info"></span><h3>Aynı Wi‑Fi</h3>
+            <p>Telefon ve bilgisayar aynı ağda olmalı. Misafir ağları cihazları birbirinden yalıtır, orada bağlanmaz.</p>
+          </li>
+          <li>
+            <span class="led info"></span><h3>StudioHub olmadan</h3>
+            <p>DeckPad OBS'e doğrudan da bağlanır: OBS › Araçlar › WebSocket Sunucu Ayarları › <b>Bağlantı bilgilerini göster</b>'deki QR'ı okut. Sunum, klavye kısayolu ve Windows ses düzeyi gibi bilgisayar eylemleri o zaman çalışmaz.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section class="plate" aria-labelledby="t-shots">
+        <h2 id="t-shots">Görünüş</h2>
+        <figure class="shots">
+          <div class="well shot-well">
+            <img src="screenshots/deckpad-telefon.png" width="1605" height="689" loading="lazy"
+              alt="DeckPad'in beş ekranı: Kayıt, Duraklat, Yayın ve Sahneler tuşlarının olduğu ana sayfa; slayt, medya ve ses tuşlarının olduğu Bilgisayar sayfası; ses efektleri sayfası; tuş düzenleyici; klavye kısayolu seçici.">
+          </div>
+          <figcaption>Telefonda: ana sayfa, Bilgisayar sayfası, ses efektleri, tuş düzenleyici ve kısayol seçici.<span class="swipe"> Görseli yana kaydırabilirsin.</span></figcaption>
+        </figure>
+        <div class="desk">
+          <figure class="shots">
+            <div class="well shot-well">
+              <img src="screenshots/studiohub-2-deckpad-pc-ve-obs-paneli.png" width="1430" height="1170" loading="lazy"
+                alt="Aynı DeckPad tuş düzeni solda geniş bir bilgisayar penceresinde, sağda dar bir OBS panelinde.">
+            </div>
+          </figure>
+          <div>
+            <h3>Aynı tuşlar bilgisayarda da</h3>
+            <p class="muted">StudioHub, DeckPad'i bilgisayarda bir pencere olarak ve OBS'in içinde panel olarak açar. Tuş düzenini telefondan gönderirsen ikisi de aynı düzeni kullanır; istersen otomatik eşitlenir.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="plate" aria-labelledby="t-features">
+        <h2 id="t-features">Neler yapar</h2>
+        <ul class="features">
+          <li>
+            <span class="mini c-red" aria-hidden="true"><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg></span></span>
+            <h3>Kayıt ve yayın</h3>
+            <p>Başlat, durdur, duraklat, devam ettir. Tuşta canlı süre görünür; yayını yanlışlıkla kapatmamak için "basılı tutarak çalıştır".</p>
+          </li>
+          <li>
+            <span class="mini c-teal" aria-hidden="true"><span><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="11" rx="2"/><path d="M6 6h12M8.5 3h7"/></svg></span></span>
+            <h3>Sahneler ve geçişler</h3>
+            <p>Sahne sayfası OBS'teki sahnelerle dolar. Studio Mode, önizlemeyi yayına alma, geçiş türü ve süresi. Yayındaki sahne kırmızı, önizleme yeşil yanar.</p>
+          </li>
+          <li>
+            <span class="mini c-purple" aria-hidden="true"><span><svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></span></span>
+            <h3>Ses ve ses efektleri</h3>
+            <p>Mikrofonu ve masaüstü sesini sustur, düzeyini ayarla. Kendi ses dosyalarını OBS'e efekt olarak ekle, tek tuşla çal.</p>
+          </li>
+          <li>
+            <span class="mini c-amber" aria-hidden="true"><span><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span></span>
+            <h3>Kaynaklar ve filtreler</h3>
+            <p>Logo, alt yazı, kamera gibi kaynakları göster ya da gizle, filtreleri aç kapat. Replay, kayda işaret, sanal kamera ve OBS kısayolları da var.</p>
+          </li>
+          <li>
+            <span class="mini c-green" aria-hidden="true"><span><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M10.5 7.5l3.5 2.5-3.5 2.5z"/></svg></span></span>
+            <h3>Sunum ve bilgisayar</h3>
+            <p>StudioHub ile: slaytları ilerlet, klavye kısayolu ve medya tuşu gönder, Windows ses düzeyini değiştir, uygulama ya da web sayfası aç, hazır metin yaz.</p>
+          </li>
+          <li>
+            <span class="mini c-blue" aria-hidden="true"><span><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg></span></span>
+            <h3>Kendi tuş düzenin</h3>
+            <p>Sayfalar, sürükle bırak, etiket, ikon ve renk. Bir tuşa birden çok adım ekleyip araya bekleme koyabilirsin. Yanlış değişikliği geri al.</p>
+          </li>
+        </ul>
+      </section>
+
+      <footer class="plate">
+        <p class="muted">DeckPad ve StudioHub kişisel bir proje olarak gelişiyor. Bir şey çalışmazsa ya da bir öneri varsa GitHub'da yaz.</p>
+        <div class="keys">
+          <a class="key c-navy" href="https://github.com/MihrimatriX/deckpad">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>Kaynak kod
+          </a>
+          <a class="key c-navy" href="https://github.com/MihrimatriX/deckpad/issues">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>Sorun bildir
+          </a>
+          <a class="key c-navy" href="https://github.com/MihrimatriX/deckpad/releases">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9z"/><circle cx="8" cy="8" r="1.5"/></svg>Tüm sürümler
+          </a>
+        </div>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
