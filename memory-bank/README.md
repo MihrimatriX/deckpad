@@ -2,7 +2,7 @@
 
 Bu klasör, projeye yeni başlayan birinin (insan ya da yapay zekâ) kodu baştan okumadan doğru yerden devam edebilmesi için yazıldı.
 Depoda üç parça var: **DeckPad** (`app/`), **StudioHub** (`studiohub/`), **OBS kurulum betiği** (`obs-script/`).
-Kardeş depo `MihrimatriX/camlink`: CamLink uygulaması ve CamLink OBS eklentisi.
+Kardeş depo `MihrimatriX/camlink`: CamLink uygulaması ve CamLink OBS eklentisi. Webcam bu depoda yok (K-016).
 
 ## Okuma sırası
 
@@ -35,4 +35,4 @@ Türkçe, kısa, olgusal. Kullanıcının söylediği kararlar "Kullanıcı:" il
 
 - Kök [`README.md`](../README.md): vitrin, kurulum, geliştirme komutları.
 - Alt README'ler: [`app/`](../app/README.md), [`studiohub/`](../studiohub/README.md), [`obs-script/`](../obs-script/README.md).
-- Mimari belge (dört parçanın ayrıntılı tasarımı): https://claude.ai/artifact/8T9gYWmcSdAtKg3iusUf5K
+- Mimari belge (dört parçanın ayrıntılı tasarımı; webcam kısmı K-016'dan önceki hâli): https://claude.ai/artifact/8T9gYWmcSdAtKg3iusUf5K

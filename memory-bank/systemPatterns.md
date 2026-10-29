@@ -13,9 +13,7 @@ StudioHub HubHost (Kestrel 0.0.0.0:4466)
   /panel-config.json  yalnız loopback: OBS ve hub bağlantı bilgisi (panel kendini bununla yapılandırır)
   /hub/           yönetim arayüzü (web/hub, yalnız loopback) → MainWindow (WebView2)
   /api/*          yalnız loopback + X-StudioHub başlığı
-CamLink (telefon) ──SRT 9100──▶ WebcamService (FFmpeg süreci) ──RGBA kareler──▶ IFrameSink (UnityCaptureSink) ──▶ "CamLink Kamera"
-Beacon ──UDP 4467 (2 sn)──▶ telefonlar
-"OBS'i hazırla" ──▶ ObsConfigurator: OBS kapalıyken global.ini / config.json / user.ini / sahne koleksiyonu JSON / plugins klasörü
+"OBS'i hazırla" ──▶ ObsConfigurator: OBS kapalıyken global.ini / config.json / user.ini / sahne koleksiyonu JSON
 ```
 
 ## DeckPad (`app/`)
@@ -60,20 +58,15 @@ test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (14), 
 
 ```
 src/StudioHub.Core (net10.0, platformdan bağımsız; Microsoft.AspNetCore.App + QRCoder)
-  HubSettings.cs          %APPDATA%\StudioHub\settings.json (camelCase), Normalize (port aralığı, webcam 1280×720 | 1920×1080 | 640×360, 30/60)
+  HubSettings.cs          %APPDATA%\StudioHub\settings.json (camelCase), Normalize (port aralığı, anahtar, ad)
   Pairing.cs              PairInfo ↔ studiohub://pair?...
-  Net/NetInfo.cs          LAN adresi puanlama (192.168 > 10 > 172.16-31, sanal bağdaştırıcı cezası, ağ geçidi bonusu), yayın adresleri
-  Discovery/Beacon.cs     UDP 4467 duyurusu (2 sn)
+  Net/NetInfo.cs          LAN adresi puanlama (192.168 > 10 > 172.16-31, sanal bağdaştırıcı cezası, ağ geçidi bonusu)
   Helper/KeyCombo.cs      "Ctrl+Shift+F5" → VK kodları (Türkçe tuş adları dahil), KeyNames görüntü adları
   Helper/PcActions.cs     PcAction (JSON), IPcPlatform, PcActionDispatcher (doğrulama: url yalnız http/https, metin ≤2000, ses kısıtları)
-  Webcam/WebcamService.cs FFmpeg süreci: SRT dinle → ölçekle/pad/fps/[hflip][vflip] → rawvideo RGBA → IFrameSink; EOF'ta yeniden dinler;
-                          FPS ilk kareden ölçülür; 10 karede bir 320 px BMP önizleme; görüntü yokken IdleFrame 250 ms'de bir;
-                          ProcessStarted kancası (Windows'ta iş nesnesine ekler)
   Obs/IniFile.cs          satırları, yorumları ve BOM'u koruyan ini düzenleyici
   Obs/ObsConfigurator.cs  WebSocket (global.ini [OBSWebSocket] + plugin_config/obs-websocket/config.json birlikte), panel
-                          ([BasicWindow] ExtraBrowserDocks; OBS 31+ user.ini, öncesi global.ini), eklenti kopyalama
-                          (%ProgramData%\obs-studio\plugins\camlink), betik (scripts klasörü + geçerli sahne koleksiyonunun
-                          modules["scripts-tool"] listesi, .deckpad-yedek yedeği). OBS açıkken yazmaz.
+                          ([BasicWindow] ExtraBrowserDocks; OBS 31+ user.ini, öncesi global.ini), betik (scripts klasörü + geçerli
+                          sahne koleksiyonunun modules["scripts-tool"] listesi, .deckpad-yedek yedeği). OBS açıkken yazmaz.
   Server/HubHost.cs       Kestrel; Host başlığı denetimi (yalnız IP/localhost, değilse 421); /hub → /hub/ yönlendirmesi middleware'de;
                           panel SPA geri dönüşü {*path:nonfile}; MapApi (tüm /api uçları); /panel-config.json
   Server/HelperHub.cs     telefon WS oturumları, kimlik doğrulama, kilit (5 hata → 1 dk), Caps listesi, deck yayınları, son eylem açıklamaları
@@ -83,37 +76,28 @@ src/StudioHub (net10.0-windows; WPF, WinForms yalnız NotifyIcon için, WebView2
   App.xaml.cs             tek kopya (Mutex + "Göster" olayı), --elevated modu, --minimized (Windows ile başlarken), HubHost kurulumu
   WebShell.cs, MainWindow, PanelWindow   WebView2 (veri %LOCALAPPDATA%\StudioHub\WebView2), koyu başlık çubuğu, WebView2 yoksa yedek ekran;
                           ana pencere kapanınca tepsiye gizlenir; panel penceresi konum/boyut/hep üstte hatırlar
-  Tray.cs                 durum, aç, panel, hep üstte, webcam başlat/durdur, çıkış
+  Tray.cs                 durum, aç, panel, hep üstte, çıkış
   Platform/WindowsPc.cs   SendInput (tarama kodu + genişletilmiş tuş bayrağı; INPUT x64'te 40 bayt), Unicode metin, Core Audio
                           (IAudioEndpointVolume), PowerPoint COM (oleaut32 GetActiveObject + dynamic; yoksa öndeki pencereye tuş)
-  Platform/UnityCaptureSink.cs  paylaşılan bellek göndericisi (aşağıda)
   Platform/WindowsPlatform.cs   OBS süreci/yolu (HKLM\SOFTWARE\OBS Studio), güvenlik duvarı (netsh, 2 dk önbellek), yükseltilmiş yardımcı, Run anahtarı
-  Platform/Elevated.cs    "StudioHub.exe --elevated istek.json sonuc.json": sürücüyü Program Files\StudioHub\driver'a kopyalayıp regsvr32
-                          (64+32 bit, "/i:UnityCaptureName=CamLink Kamera"), güvenlik duvarı (remoteip=localsubnet), eklenti kopyalama
-  Platform/IdleFrames.cs  WPF RenderTargetBitmap ile "Telefon bekleniyor / Kamera kapalı" karesi (STA iş parçacığında, önbellekli)
-  Platform/JobObject.cs   KILL_ON_JOB_CLOSE: StudioHub çökerse FFmpeg de kapanır
+  Platform/Elevated.cs    "StudioHub.exe --elevated istek.json sonuc.json": güvenlik duvarı kuralı "StudioHub (TCP)" (remoteip=localsubnet)
   Platform/Native.cs      P/Invoke bildirimleri
 src/StudioHub.DevServer   Linux/macOS'ta sahte platformla sunucu (Fakes.cs testlerde de kullanılır).
-                          Ortam: OBS_CONFIG_DIR, OBS_PLUGIN_ROOT, HUB_ALL_LOCAL=1 (LAN'dan yönetime izin), FFMPEG
-tests/StudioHub.Core.Tests UnitTests.cs + HostTests.cs (41)
+                          Ortam: OBS_CONFIG_DIR, HUB_ALL_LOCAL=1 (LAN'dan yönetime izin)
+tests/StudioHub.Core.Tests UnitTests.cs + HostTests.cs (41 test)
 web/hub                   yönetim arayüzü: bağımlılıksız HTML/CSS/JS, Barlow TTF'leri yerel
-vendor/                   driver (Unity Capture, depoda), ffmpeg (indirilir), obs/obs-plugin (camlink deposundan derlenmiş kopya)
 ```
 
-### Unity Capture protokolü (gönderici tarafı)
-Adlar (cihaz 0): `UnityCapture_Mutx`, `_Want`, `_Sent`, `_Data`. Sıra: OpenMutex(SYNCHRONIZE) → kilitle → CreateEvent(Want) → OpenEvent(Sent, EVENT_MODIFY_STATE) → OpenFileMapping(FILE_MAP_WRITE) → MapViewOfFile.
-Başlık: DWORD maxSize; int width, height, stride (piksel), format (0=RGBA8), resizemode (1=lineer), mirrormode, timeout (ms); veri ofset 32.
-Yaz → ReleaseMutex → SetEvent(Sent); Want işaretliyse tüketici var. Filtre satırları alttan üste DIB'e kopyalar → FFmpeg'de `vflip` (varsayılan açık, arayüzde "Ters çıkarsa çevir").
-Nesneler yalnız kamerayı açan bir uygulama varken oluşur; tüketici yokken 400 ms'de bir yoklanır. CLSID x64 `{5C2CD55C-92AD-4999-8666-912BD3E70010}`, x86 `…0020`.
+Webcam alıcısı (WebcamService, UnityCaptureSink, IdleFrames, JobObject, Unity Capture protokolü notları) K-016 ile çıktı; kod ve bu bölümün eski hâli `48923a0`'da.
 
 ### Kurallar
-- Windows'a özgü her şey `IHubPlatform` / `IPcPlatform` / `IFrameSink` arkasında ve yalnız `src/StudioHub/Platform` içinde. Core testleri sahtelerle çalışır.
-- Yönetici izni gereken işler (sürücü kaydı, güvenlik duvarı, eklentiyi ProgramData'ya kopyalama) ana süreçte yapılmaz; `ElevatedRequest` JSON'u ile `--elevated` alt sürecine gider. Ana uygulama yönetici olarak çalışmaz (UIPI yüzünden tuş gönderme bozulurdu).
+- Windows'a özgü her şey `IHubPlatform` / `IPcPlatform` arkasında ve yalnız `src/StudioHub/Platform` içinde. Core testleri sahtelerle çalışır.
+- Yönetici izni gereken işler (güvenlik duvarı) ana süreçte yapılmaz; `ElevatedRequest` JSON'u ile `--elevated` alt sürecine gider. Ana uygulama yönetici olarak çalışmaz (UIPI yüzünden tuş gönderme bozulurdu).
 - Telefondan gelen her veri doğrulanır (PcActionDispatcher, DeckStore boyut sınırı, validateProfile).
 
-## OBS betiği (`obs-script/deckpad-camlink.lua`)
+## OBS betiği (`obs-script/deckpad.lua`)
 - Yardımcılar: `with_scene` (bul ya da oluştur, referansları bırakır), `add_source` (öğe, yeni mi oluşturuldu, bu sahneye yeni mi eklendi), `fit` (SCALE_INNER sınır kutusu), `nest_sfx_everywhere`, `stop_sfx` (açılışta ve koleksiyon değişince).
-- Tür seçimi sürüme/platforma göre ilk var olan: renk `color_source_v3…`, yazı `text_gdiplus_v3…`/`text_ft2_source_v2`, ekran `monitor_capture`/`xshm_input…`; kamera `camlink_source` yoksa SRT dinleyen `ffmpeg_source`.
+- Tür seçimi sürüme/platforma göre ilk var olan: renk `color_source_v3…`, yazı `text_gdiplus_v3…`/`text_ft2_source_v2`, ekran `monitor_capture`/`xshm_input…`. Kamera kaynağı eklemez; "Kamera" sahnesine kullanıcı kendi kamerasını koyar.
 - Kurulum işleri yalnız düğme geri çağrılarında ve ön yüz olaylarında (arayüz iş parçacığı). Zamanlayıcı yalnız medya durdurma gibi hafif işler için.
 
 ## Tarifler
