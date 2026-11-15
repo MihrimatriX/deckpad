@@ -19,7 +19,7 @@ StudioHub HubHost (Kestrel 0.0.0.0:4466)
 ## DeckPad (`app/`)
 
 ```
-App.tsx                 açılış: ayarlar + deste yükle → panel modu mu? → OBS/StudioHub bağlan → otomatik sayfa doldurma
+App.tsx                 açılış: ayarlar + deste yükle → panel modu mu? → OBS/StudioHub bağlan → otomatik sayfaları OBS ile eşitle
 src/obs/client.ts       ObsController (tekil): bağlan (7 sn zaman aşımı), gen sayacı, üstel yeniden bağlanma,
                         auth hatası (4009) denemeyi durdurur, syncAll RequestBatch, olaylar, 1 sn yoklama (kayıt/yayın/istatistik)
 src/obs/store.ts        zustand: canlı OBS durumu (sahneler, girdiler, susturma, kayıt/yayın, sceneItems, filtreler)
@@ -43,12 +43,12 @@ src/settings.ts         ayarlar AsyncStorage'da; OBS şifresi ve StudioHub anaht
 src/theme.ts            renk ve yazı anahtarları
 src/components/         ui.tsx (Keycap, Sheet, Btn, Chip, Field…), DeckGrid (+ bağlantı kapısı), DeckButtonView, Chrome (TopBar,
                         StatusDisplay, PageTabs), ButtonEditor, ActionEditor (OBS ve PC formları), Sheets (Bağlantı, Ayarlar, Sayfa)
-test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (14), hub.test.ts (10, MockHub), serve-mock.ts (elle deneme)
+test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (16), hub.test.ts (10, MockHub), serve-mock.ts (elle deneme)
 ```
 
 ### Kalıplar
 - **Durum**: zustand v5. Seçici yeni nesne/dizi döndürüyorsa `useShallow` (yoksa sonsuz render).
-- **Otomatik sayfa doldurma**: profilde `autoScenesPageId` / `autoSfxPageId` doluysa bağlantıda doldurulur ve alan silinir; bir daha dolmaz. "Ses Efektleri" sahnesi sahne tuşlarından çıkarılır, efektler Türkçe sıralanır.
+- **Otomatik sayfalar OBS'i izler** (K-021): profilde `autoScenesPageId` / `autoSfxPageId` doluysa `App.tsx` › `syncAutoPage` bağlanınca ve OBS'te sahne ya da kaynak listesi değişince (`scenes`, `inputs`) çalışır; alanlar silinmez. Kural `ops.ts` › `syncAutoButtons`: yalnız eksik adlar sona eklenir, tuş silinmez; değişiklik yoksa aynı diziyi döndürür (deste yeniden kaydedilmez). Sonuç `applyRemote` ile yazılır, geri alma geçmişine girmez. "Ses Efektleri" sahnesi sahne tuşlarından çıkarılır, efektler Türkçe sıralanır.
 - **Panel modu**: `panelMode` varsa ayarlar /panel-config.json'dan gelir, `deckSync` zorla açık; başlıklar "OBS paneli" / "Masaüstü paneli".
 - **Bağlantı kapısı**: tuş OBS eylemi içeriyorsa OBS, pc eylemi içeriyorsa StudioHub bağlı olmalı (DeckGrid.PlayButton uyarır).
 - **Keycap**: dış görünüm (etek rengi `shade(-0.5)`) + degrade yüz; esneme `flexGrow/flexShrink` ile (flex:1 değil).

@@ -17,6 +17,7 @@ Fullstack geliştirici (.NET, React/Next.js, Unity) ve dijital oyun tasarımı e
 9. (2026-10-24) Projeler GitHub'a: MihrimatriX hesabı, **özel** depolar, **lisans yok**. "Kamera ve deck ayrı iki uygulama, ona göre dağıt": deckpad = DeckPad + StudioHub + OBS betiği; camlink = CamLink + OBS eklentisi.
 10. (2026-10-26) "Burada webcam uygulaması olmayacak; sadece telefondan OBS'i kontrol etmek, ses oynatmak." StudioHub webcam'siz kalır, OBS'siz webcam alıcısı camlink'e taşınacak (K-016).
 11. (2026-10-26) "Kurulum ve kullanım çok daha basit olmalı" → tek komut `scripts/kur.ps1`, telefonda Expo Go yerine APK (K-017).
+12. (2026-11-15) "OBS'i ve bilgisayarımı telefonumdan verimli ve kullanışlı şekilde kullanabileceğim bir hale getirmek istiyorum, kullanımı da oldukça kolay olmalı." → öncelik günlük kullanımdaki pürüzler; ilk iş otomatik sayfaların OBS'i izlemesi.
 
 ## Kullanıcının çalışma tercihleri
 

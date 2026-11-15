@@ -18,10 +18,10 @@ import { PageTabs, TopBar } from './src/components/Chrome';
 import { DeckGrid } from './src/components/DeckGrid';
 import { ConnectSheet, PageSheet, SettingsSheet } from './src/components/Sheets';
 import { ToastHost } from './src/components/ui';
-import { sceneButtons, sfxButtons } from './src/deck/defaults';
+import { sceneButtons, sceneOf, sfxButtons, sfxOf } from './src/deck/defaults';
 import { newId, OBS_NAMES, type DeckButton } from './src/deck/model';
 import { collectBindings } from './src/deck/run';
-import { updatePage, useDeck } from './src/deck/store';
+import { syncAutoButtons, updatePage, useDeck } from './src/deck/store';
 import { obsClient } from './src/obs/client';
 import { useObs } from './src/obs/store';
 import { deviceName } from './src/device';
@@ -65,6 +65,23 @@ function KeepAwake() {
   return null;
 }
 
+/** Otomatik sayfayı OBS'teki adlarla eşitler. OBS kaynaklı değişiklik kullanıcı düzenlemesi değildir: geri alma geçmişine girmez. */
+function syncAutoPage(
+  pageId: string,
+  names: string[],
+  bound: (b: DeckButton) => string | undefined,
+  make: (names: string[]) => DeckButton[],
+) {
+  const deck = useDeck.getState();
+  const page = deck.profile.pages.find((p) => p.id === pageId);
+  if (!page) return;
+  const buttons = syncAutoButtons(page.buttons, names, bound, make);
+  if (buttons === page.buttons) return;
+  deck.applyRemote(
+    updatePage(deck.profile, pageId, (pg) => ({ ...pg, buttons, rows: Math.max(pg.rows, Math.ceil(buttons.length / pg.cols)) })),
+  );
+}
+
 function Main() {
   const settingsLoaded = useSettings((s) => s.loaded);
   const deckLoaded = useDeck((s) => s.loaded);
@@ -73,6 +90,7 @@ function Main() {
   const pageId = useDeck((s) => s.pageId);
   const status = useObs((s) => s.status);
   const scenes = useObs((s) => s.scenes);
+  const inputs = useObs((s) => s.inputs);
 
   const [sheet, setSheet] = useState<'connect' | 'settings' | 'page' | null>(null);
   const [editing, setEditing] = useState<{ button: DeckButton; isNew: boolean } | null>(null);
@@ -122,7 +140,8 @@ function Main() {
     return () => sub.remove();
   }, []);
 
-  // "Ses efektleri" sayfasını OBS'teki "Ses Efektleri" sahnesinin kaynaklarıyla doldur.
+  // "Ses efektleri" sayfası OBS'teki "Ses Efektleri" sahnesinin kaynaklarını izler.
+  // Yeni efekt yeni bir OBS kaynağıdır; `inputs` değişince liste yeniden okunur.
   useEffect(() => {
     const target = profile.autoSfxPageId;
     if (status !== 'connected' || !target || !scenes.includes(OBS_NAMES.sfxScene)) return;
@@ -130,35 +149,19 @@ function Main() {
     obsClient
       .listSceneItems(OBS_NAMES.sfxScene)
       .then((names) => {
-        if (!alive || !names.length) return;
-        useDeck.getState().mutate((p) => {
-          if (p.autoSfxPageId !== target) return p;
-          const filled = updatePage(p, target, (pg) => ({
-            ...pg,
-            rows: Math.max(pg.rows, Math.ceil((pg.buttons.length + names.length) / pg.cols)),
-            buttons: [...pg.buttons, ...sfxButtons(names)],
-          }));
-          return { ...filled, autoSfxPageId: undefined };
-        });
+        if (alive && names.length) syncAutoPage(target, names, sfxOf, sfxButtons);
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [status, scenes, profile.autoSfxPageId]);
+  }, [status, scenes, inputs, profile.autoSfxPageId]);
 
-  // İlk bağlantıda "Sahneler" sayfasını OBS sahneleriyle doldur.
+  // "Sahneler" sayfası OBS'teki sahne listesini izler.
   useEffect(() => {
-    if (status !== 'connected' || !scenes.length || !profile.autoScenesPageId) return;
     const target = profile.autoScenesPageId;
-    useDeck.getState().mutate((p) => {
-      const filled = updatePage(p, target, (pg) => ({
-        ...pg,
-        rows: Math.max(pg.rows, Math.ceil((pg.buttons.length + scenes.length) / pg.cols)),
-        buttons: [...pg.buttons, ...sceneButtons(scenes)],
-      }));
-      return { ...filled, autoScenesPageId: undefined };
-    });
+    if (status !== 'connected' || !scenes.length || !target) return;
+    syncAutoPage(target, scenes.filter((s) => s !== OBS_NAMES.sfxScene), sceneOf, sceneButtons);
   }, [status, scenes, profile.autoScenesPageId]);
 
   const page = profile.pages.find((p) => p.id === pageId) ?? profile.pages[0];

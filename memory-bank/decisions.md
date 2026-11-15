@@ -109,3 +109,11 @@ Kullanıcıya görünen her metin, BENİOKU'lar, hafıza bankası ve kod yorumla
 - Ana ekran: büyük QR ve "DeckPad'i aç, kodu okut"; OBS kartında tek satır durum ve "OBS'i hazırla/aç"; bağlı cihazlar ve "Masaüstü panelini aç". Adres seçimi, elle bağlanma, kod yenileme, OBS kontrol listesi, panel adresi ve ayarlar kapalı gelen "Gelişmiş" bölümünde.
 - Üst çubuk ve OBS kartı aynı `obsSummary()`'den beslenir (önceden ayrı hesaplanıyor, çelişiyordu). **Yeşil = telefon OBS'e bağlanabilir** (WebSocket açık ve şifre biliniyor); panel ya da betik eksikse yeşil kalır, metin söyler. Metinler durum adı değil eylemdir ("OBS'i kapat, sonra hazırla").
 - QR'daki OBS şifresi önce OBS'in kendi ayarından (`ObsConfigurator.ExistingPassword`), yoksa StudioHub ayarından gelir: "OBS'i hazırla" hiç çalışmasa ya da şifre OBS'te değişse de QR doğru.
+
+### K-021 · Otomatik sayfalar OBS'i izler; kural: yalnız eksikleri ekle
+**Kaynak**: Kullanıcı ("OBS'i ve bilgisayarımı telefonumdan verimli ve kullanışlı şekilde kullanabileceğim bir hale getirmek istiyorum, kullanımı da oldukça kolay olmalı", 2026-11-15) + Teknik (yöntem ve kural) · **Durum**: geçerli; kural kullanıcıya soruldu, yanıt gelmeden varsayılan seçildi
+- Sahneler ve Ses efektleri sayfaları bir kez dolup bırakmak yerine OBS'i izler: `autoScenesPageId` / `autoSfxPageId` silinmez; bağlanınca ve OBS'te sahne ya da kaynak listesi değişince `syncAutoPage` çalışır. Önceden OBS'e sonradan eklenen sahne ya da efekt telefona hiç gelmiyordu.
+- **Kural** (`ops.ts` › `syncAutoButtons`): OBS'te olup sayfada tuşu olmayan adlar sona eklenir; hiçbir tuş silinmez, sırası ve özelleştirmesi (etiket, renk) korunur.
+- OBS kaynaklı değişiklik `applyRemote` ile yazılır: geri alma geçmişine girmez (eski tek seferlik doldurma `mutate` ile giriyordu).
+- **Seçenekler**: "ayna" (OBS'te silinenin tuşunu da kaldır). Sayfa temiz kalır ama yeniden adlandırma "sil + ekle" olduğundan özelleştirme kaybolur; veri kaybettirmeyen kural seçildi.
+- **Sınır**: OBS'te silinen ya da adı değişen sahnenin tuşu kalır (elle silinir, geri gelmez). Kullanıcının bilerek sildiği, OBS'te hâlâ duran sahnenin tuşu bir sonraki eşitlemede geri gelir; rahatsız ederse profile "görülen adlar" listesi eklenir. Alanları daha önce silinmiş eski profiller izlemez: "Varsayılan desteye dön" gerekir.

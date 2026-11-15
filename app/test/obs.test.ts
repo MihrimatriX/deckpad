@@ -7,8 +7,8 @@ import { useObs } from '../src/obs/store';
 import { parseObsQr } from '../src/obs/qr';
 import { buttonState, runButton } from '../src/deck/run';
 import type { DeckButton } from '../src/deck/model';
-import { validateProfile } from '../src/deck/ops';
-import { defaultProfile } from '../src/deck/defaults';
+import { syncAutoButtons, validateProfile } from '../src/deck/ops';
+import { defaultProfile, sceneButtons, sceneOf } from '../src/deck/defaults';
 import { MockObs } from './mock-obs';
 
 const PORT = 45455;
@@ -202,5 +202,14 @@ describe('yardımcılar', () => {
     assert.equal(fixed.pages[0].cols, 8);
     assert.equal(fixed.pages[0].buttons.length, 1);
     assert.deepEqual(fixed.pages[0].buttons[0].actions, []);
+  });
+
+  test('otomatik sayfa: OBS\'teki yeni ad tuş olur, değişiklik yoksa dizi aynen kalır', () => {
+    const home = btn([{ type: 'page', pageId: 'ana' }]);
+    const page = [home, ...sceneButtons(['Kamera'])];
+    assert.equal(syncAutoButtons(page, ['Kamera'], sceneOf, sceneButtons), page, 'değişiklik yoksa aynı dizi döner');
+    const next = syncAutoButtons(page, ['Kamera', 'Oyun'], sceneOf, sceneButtons);
+    assert.ok(next.includes(home), 'OBS adına bağlı olmayan tuşlar korunur');
+    assert.deepEqual(next.map(sceneOf).filter(Boolean), ['Kamera', 'Oyun']);
   });
 });

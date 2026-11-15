@@ -117,6 +117,16 @@ export function defaultProfile(): DeckProfile {
   };
 }
 
+/** Tuş bir sahneye ya da ses efektine bağlıysa OBS'teki adını verir (otomatik sayfa eşitlemesi için). */
+export const sceneOf = (b: DeckButton) => {
+  const a = b.actions[0];
+  return a?.type === 'scene' ? a.scene : undefined;
+};
+export const sfxOf = (b: DeckButton) => {
+  const a = b.actions[0];
+  return a?.type === 'media' ? a.input : undefined;
+};
+
 /** OBS'teki "Ses Efektleri" sahnesindeki kaynaklardan baştan oynatma tuşları üretir. */
 export function sfxButtons(names: string[]): DeckButton[] {
   const colors = ['#6D3BE0', '#B8236B', '#C4501A', '#B07A12', '#0E8072', '#2457D6'];

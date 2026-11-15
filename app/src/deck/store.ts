@@ -22,7 +22,7 @@ interface DeckStore {
   mutate: (fn: (p: DeckProfile) => DeckProfile) => void;
   undo: () => void;
   replaceProfile: (p: DeckProfile) => void;
-  /** Bilgisayardan gelen düzen: geçmişe eklenmez, açık sayfa korunur. */
+  /** Dışarıdan gelen düzen (bilgisayar ya da OBS eşitlemesi): geçmişe eklenmez, açık sayfa korunur. */
   applyRemote: (p: DeckProfile) => void;
 }
 

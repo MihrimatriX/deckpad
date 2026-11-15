@@ -61,9 +61,9 @@ export interface DeckProfile {
   version: 1;
   name: string;
   pages: DeckPage[];
-  /** İlk bağlantıda OBS sahneleriyle doldurulacak sayfa; doldurulunca silinir. */
+  /** OBS sahnelerini izleyen sayfa: bağlanınca ve sahne listesi değişince tuşları eşitlenir. */
   autoScenesPageId?: string;
-  /** OBS'te "Ses Efektleri" sahnesi bulununca efekt tuşlarıyla doldurulacak sayfa. */
+  /** OBS'teki "Ses Efektleri" sahnesinin kaynaklarını izleyen sayfa. */
   autoSfxPageId?: string;
 }
 

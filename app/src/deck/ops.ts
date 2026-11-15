@@ -55,6 +55,28 @@ export const movePage = (p: DeckProfile, pageId: string, dir: -1 | 1): DeckProfi
   return { ...p, pages };
 };
 
+/**
+ * Otomatik sayfanın ("Sahneler", "Ses efektleri") tuşlarını OBS'teki güncel adlarla eşitler.
+ * - `buttons`: sayfadaki tuşlar; "Ana sayfa" tuşu ve kullanıcının eklediği ya da düzenlediği tuşlar da buradadır.
+ * - `names`: OBS'teki adlar, OBS'teki sırayla (sahneler ya da "Ses Efektleri" sahnesinin kaynakları).
+ * - `bound`: tuş bir OBS adına bağlıysa o adı, değilse undefined döner.
+ * - `make`: verilen adlar için yeni tuşlar üretir.
+ * Değişiklik yoksa `buttons` dizisinin kendisini döndür: çağıran yer bunu "dokunma" diye okur
+ * (yoksa her OBS olayında deste yeniden kaydedilir ve bilgisayara gönderilir).
+ */
+export function syncAutoButtons(
+  buttons: DeckButton[],
+  names: string[],
+  bound: (b: DeckButton) => string | undefined,
+  make: (names: string[]) => DeckButton[],
+): DeckButton[] {
+  // ponytail: yalnız eksikler eklenir, hiçbir tuş silinmez. OBS'te silinen ya da adı değişen sahnenin tuşu kalır
+  // (elle silinir), kullanıcının sildiği tuş ise geri gelir; rahatsız ederse profile "görülen adlar" listesi eklenir.
+  const have = new Set(buttons.map(bound));
+  const missing = names.filter((n) => !have.has(n));
+  return missing.length ? [...buttons, ...make(missing)] : buttons;
+}
+
 /** İçe aktarılan JSON'u doğrular; bozuk alanları düzeltir. */
 export function validateProfile(raw: any): DeckProfile {
   if (!raw || !Array.isArray(raw.pages) || !raw.pages.length) throw new Error('Geçersiz deste dosyası');
