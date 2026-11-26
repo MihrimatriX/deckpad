@@ -1,6 +1,6 @@
 # İlerleme
 
-**Son güncelleme**: 2026-11-15
+**Son güncelleme**: 2026-11-26
 
 ## Sürüm geçmişi
 
@@ -12,7 +12,8 @@
 | webcam ayrımı (2026-10-26) | Webcam deckpad'den çıktı (K-016): FFmpeg, sanal kamera sürücüsü, CamLink eklentisi kopyası, SRT ayarları, UDP duyurusu, QR'daki `srt`/`webcam`, betikteki telefon kamerası. Betik `deckpad.lua`. `scripts/hazirla.*` yerine tek komut `scripts/kur.ps1` (K-017). |
 | bildirim (2026-10-27) | "Ekrana yazı göster" eylemi ve betiğin her sahneye eklediği boş `Bildirim` metni (K-018); ilk açılışta doğrudan QR kamerası, QR okununca bağlantı ekranı kapanır; `kur.ps1` Run anahtarı yazmaz, yalnız arm64 derler. |
 | v1.0.0 (2026-10-29) | Depo açık; Releases (`StudioHub.exe`, `DeckPad.apk`) ve GitHub Pages indirme sayfası (K-019). StudioHub tek dosya (içerik gömülü). Sade yönetim arayüzü (K-020); QR kırpılması ve OBS şifresi düzeltmeleri; release APK'da QR çözücü (R8) düzeltmesi. |
-| canlı otomatik sayfalar (2026-11-15, commit atılmadı) | Sahneler ve Ses efektleri sayfaları OBS'i izler (K-021): bağlıyken OBS'e eklenen sahne ya da efekt yeniden bağlanmadan tuş olur; doldurma geri alma geçmişine girmez. |
+| canlı otomatik sayfalar (2026-11-15) | Sahneler ve Ses efektleri sayfaları OBS'i izler (K-021): bağlıyken OBS'e eklenen sahne ya da efekt yeniden bağlanmadan tuş olur; doldurma geri alma geçmişine girmez. |
+| camlink ayrımı (2026-11-26) | camlink'le her bağ koptu (K-022): `contracts.md` yalnız bu depo; eski `deckpad-camlink.lua` taşıma kodu silindi. Davranış değişikliği yok. |
 
 ## Doğrulanan
 
@@ -75,7 +76,7 @@
 - Otomatik sayfada OBS'te silinen ya da adı değişen sahnenin tuşu kalır (elle silinir); OBS'te duran bir sahnenin silinen tuşu sonraki eşitlemede geri gelir (K-021).
 - Yönetici olarak çalışan pencerelere tuş gönderilemez (UIPI).
 - Güvenlik duvarı durumu netsh ile 2 dk önbellekli; ilk sorguda "yok" görünebilir.
-- Eski kurulumlarda `%ProgramFiles%\StudioHub\driver` ve `%ProgramData%\obs-studio\plugins\camlink` kalabilir (kullanıcının bilgisayarında eklenti var); StudioHub bunlara dokunmaz. "StudioHub (UDP)" kuralı Güvenlik duvarı › İzin ver'e basınca silinir.
+- Eski kurulumlarda `%ProgramFiles%\StudioHub\driver` ve `%ProgramData%\obs-studio\plugins\camlink` kalabilir (kullanıcının bilgisayarında eklenti var); StudioHub bunlara dokunmaz. Eski `deckpad-camlink.lua` kaydı artık taşınmaz (K-022): o adla kalmış bir betik varsa OBS › Araçlar › Betikler'den elle kaldırılır. "StudioHub (UDP)" kuralı Güvenlik duvarı › İzin ver'e basınca silinir.
 - APK'lar hata ayıklama anahtarıyla imzalı: başka makinede derlenen APK mevcut kurulumu güncelleyemez (önce kaldırmak gerekir).
 - Eski `kur.ps1` kurulumundan kalan `hub`, `panel`, `obs` klasörleri artık okunmuyor ama silinmiyor.
 - APK yalnız arm64-v8a; 32-bit ARM ve x86_64 emülatörde çalışmaz (`-PreactNativeArchitectures` ile değiştirilebilir).

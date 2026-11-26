@@ -13,8 +13,7 @@ StudioHub açıksa aynı tuşlar bilgisayarda da iş görür: sunumu ilerletme, 
 
 ![DeckPad: ana sayfa, Bilgisayar sayfası, ses efektleri, tuş düzenleyici ve kısayol seçici](docs/screenshots/deckpad-telefon.png)
 
-Kardeş depo **[camlink](https://github.com/MihrimatriX/camlink)**: telefonu kablosuz kameraya çeviren uygulama ve CamLink OBS eklentisi.
-Bu depoda webcam yok; yalnızca telefondan OBS'i ve bilgisayarı yönetmek var.
+Amaç tek: telefondan OBS'i ve bilgisayarı yönetmek. Webcam ya da kamera aktarımı bu projenin konusu değil.
 
 ## Bu depoda
 
@@ -45,7 +44,7 @@ flowchart LR
 ```
 
 DeckPad OBS'e **doğrudan** bağlanır; StudioHub olmadan da tam çalışır. StudioHub yalnızca bilgisayar eylemleri ve bilgisayardaki paneller için gerekir.
-Portlar, QR biçimi ve WebSocket mesajları: [`memory-bank/suite-contracts.md`](memory-bank/suite-contracts.md).
+Portlar, QR biçimi ve WebSocket mesajları: [`memory-bank/contracts.md`](memory-bank/contracts.md).
 
 ## Kullanım
 

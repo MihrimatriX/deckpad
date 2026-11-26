@@ -108,10 +108,10 @@ Webcam alıcısı (WebcamService, UnityCaptureSink, IdleFrames, JobObject, Unity
 1. Core: `PcActions.cs` (alan, enum, `IPcPlatform` yöntemi, `PcActionDispatcher` doğrulama + case), `HelperHub.Caps`, `HelperHub` açıklama metni.
 2. Windows: `WindowsPc.cs`; sahte: `DevServer/Fakes.cs` (`FakePc`). Test: `UnitTests.cs`.
 3. DeckPad: `hub/client.ts` `PcAction` tipi, `model.ts` pc* türü + `isPcAction`, `actions.ts`, `ActionEditor`, `run.ts` `toPcAction`, `test/hub.test.ts`.
-4. `suite-contracts.md` › PcAction (iki depoda).
+4. `contracts.md` › PcAction.
 
 **Yeni StudioHub API ucu**: `HubHost.MapApi` → `web/hub/app.js` → `HostTests` (loopback + başlık denetimi dahil).
 
-**OBS'te yeni ad gerektiren varsayılan tuş**: betikte oluştur → `model.ts` OBS_NAMES → `defaults.ts` → `suite-contracts.md` › OBS'teki adlar.
+**OBS'te yeni ad gerektiren varsayılan tuş**: betikte oluştur → `model.ts` OBS_NAMES → `defaults.ts` → `contracts.md` › OBS'teki adlar.
 
 **Panel değişikliği**: DeckPad'i değiştir → `npm run export:panel` → StudioHub'ı yeniden derle/yayınla.

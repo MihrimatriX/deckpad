@@ -5,17 +5,15 @@
 Telefonu OBS için bir Stream Deck'e çevirmek (**DeckPad**) ve bilgisayar tarafında bunu tamamlayan bir Windows yardımcısı (**StudioHub**) sağlamak.
 Kullanıcı bunu kendi kayıt ve yayınları için istiyor. Mağazada yayın şimdilik hedef değil.
 
-Takımın tamamı dört parçadan oluşur, iki depoya ayrılmıştır:
+Proje üç parçadan oluşur, hepsi bu depoda:
 
-| Parça | Depo | Ne |
+| Parça | Klasör | Ne |
 |---|---|---|
-| DeckPad | **deckpad** `app/` | Telefon: düzenlenebilir tuş ızgarası, OBS ve bilgisayar eylemleri |
-| StudioHub | **deckpad** `studiohub/` | Windows: bilgisayar eylemleri, masaüstü/OBS paneli, OBS'i hazırla |
-| OBS kurulum betiği | **deckpad** `obs-script/` | DeckPad'in beklediği sahne/kaynakları OBS'te kurar |
-| CamLink | camlink `app/` | Telefon: kablosuz kamera (SRT) |
-| CamLink OBS eklentisi | camlink `obs-plugin/` | OBS: telefon kamerası kaynağı + ağ duyurusu |
+| DeckPad | `app/` | Telefon: düzenlenebilir tuş ızgarası, OBS ve bilgisayar eylemleri |
+| StudioHub | `studiohub/` | Windows: bilgisayar eylemleri, masaüstü/OBS paneli, OBS'i hazırla |
+| OBS kurulum betiği | `obs-script/` | DeckPad'in beklediği sahne/kaynakları OBS'te kurar |
 
-deckpad deposunda webcam yok (K-016): yalnız telefondan OBS'i ve bilgisayarı yönetmek. OBS'siz webcam alıcısı camlink'e taşınacak.
+Webcam yok (K-016) ve başka bir uygulamayla bağ yok (K-022). Hedef: telefondan OBS'i ve bilgisayarı yöneten, kullanımı kolay, şık, hızlı ve güçlü bir yayın paneli.
 
 ## Kapsam
 
