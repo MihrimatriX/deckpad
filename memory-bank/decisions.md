@@ -124,3 +124,11 @@ Kullanıcıya görünen her metin, BENİOKU'lar, hafıza bankası ve kod yorumla
 - Kodda camlink'e bağımlılık yoktu; yalnız `ObsConfigurator.AddScript`'teki eski `deckpad-camlink.lua` kaydını taşıma kodu ve testi silindi (kullanıcının bilgisayarı 2026-10-26'da taşınmıştı).
 - DeckPad eski QR'lardaki `srt`/`webcam` alanlarını yok saymayı sürdürür (zararsız, eski kodlar okunur).
 - Kullanıcının bilgisayarında kalan eski CamLink eklentisi ve "StudioHub (UDP)" kuralı StudioHub'ın işi değil; istenirse elle kaldırılır.
+
+### K-023 · Mikser ayrı bir sayfa türü; kaydırıcı kübik eğriyle dB yazar
+**Kaynak**: Kullanıcı ("kullanımı kolay ve güçlü bir yayın paneli", 2026-11-26; plan 3. adım) + Teknik (yöntem) · **Durum**: geçerli
+- `DeckPage.kind = 'mixer'`: tuş ızgarası yerine OBS'te sesi olan her kaynak için sustur tuşu + yatay kaydırıcı + dB. Liste OBS'ten canlı gelir (sustur durumu okunabilen kaynaklar); genel aygıtlar (masaüstü, mikrofon) başta, "Ses Efektleri" sahnesindeki klipler gizli.
+- Kaydırıcı konumu p → dB = 60·log10(p) (kübik çarpan): orta nokta ≈ -18 dB, kulağa doğal; 0 dB'de biter (OBS +26'ya kadar izin verir, o kısım OBS'in gelişmiş ses ayarlarında kalır). p=0 → -100 (OBS'te -∞).
+- Sürüklerken en çok 60 ms'de bir `SetInputVolume`; bırakınca son değer. OBS `InputVolumeChanged` ile doğrular, ekran OBS'in değerine döner.
+- **Seçenekler**: tuş olarak "ses ±" (zaten var, ince ayara uygun değil); dikey fader şeritleri (OBS'e benzer ama telefonda dikey ekranda dar kalır). Kaynak başına VU ölçer (`InputVolumeMeters` olayı, saniyede ~20 ileti) bant genişliği ve pil yüzünden şimdilik yok.
+- Varsayılan destede "Mikser" sayfası ve Ana sayfada ona giden tuş var. Eski destelere düzenleme modunda "Mikser ekle" ile eklenir (desteyi sıfırlamadan).

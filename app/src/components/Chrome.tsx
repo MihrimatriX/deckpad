@@ -269,6 +269,23 @@ export function PageTabs() {
             <Text style={[styles.tabText, { color: navy.accent }]}>Sayfa ekle</Text>
           </Pressable>
         ) : null}
+        {editing && !pages.some((p) => p.kind === 'mixer') ? (
+          <Pressable
+            onPress={() => {
+              let id = '';
+              mutate((p) => {
+                const r = addPage(p, 'Mikser', 'mixer');
+                id = r.id;
+                return r.profile;
+              });
+              setPage(id);
+            }}
+            style={({ pressed }) => [styles.tabOff, styles.tabAdd, pressed && { opacity: 0.6 }]}
+          >
+            <Ionicons name="options" size={18} color={navy.accent} />
+            <Text style={[styles.tabText, { color: navy.accent }]}>Mikser ekle</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );

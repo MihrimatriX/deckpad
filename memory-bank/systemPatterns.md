@@ -38,19 +38,21 @@ src/deck/run.ts         runButton: ardışık OBS istekleri tek RequestBatch; "B
                         pc* eyleminden önce birikmiş OBS istekleri gönderilir (sıra korunur); toPcAction; buttonState (tally/alt etiket)
 src/deck/store.ts       deste (AsyncStorage, 250 ms gecikmeli kayıt), geri alma (40 adım), applyRemote (geçmişe eklemez)
 src/deck/ops.ts         saf yardımcılar, validateProfile (dışarıdan gelen desteyi doğrular)
+src/deck/mixer.ts       mikser: fader eğrisi (posToDb/dbToPos, kübik), formatDb, mixerChannels (sesi olan kaynaklar, genel aygıtlar başta)
 src/deck/layout.ts      fitGrid: ızgara yerleşimi (dikeyde tuşlar en çok 1,4 kat uzar, yatayda kare ve daha çok sütun)
 src/deck/defaults.ts    varsayılan deste: Ana, Sahneler (otomatik), Ses efektleri (otomatik), Slaytlar, Bilgisayar
 src/settings.ts         ayarlar AsyncStorage'da; OBS şifresi ve StudioHub anahtarı SecureStore'da (web'de AsyncStorage'a düşer)
 src/theme.ts            renk ve yazı anahtarları
-src/components/         ui.tsx (Keycap, Sheet, Btn, Chip, Field…), DeckGrid (+ bağlantı kapısı), DeckButtonView, Chrome (TopBar,
+src/components/         ui.tsx (Keycap, Sheet, Btn, Chip, Field…), DeckGrid (+ bağlantı kapısı), DeckButtonView, Mixer (MixerView, Fader), Chrome (TopBar,
                         StatusDisplay, PageTabs), ButtonEditor, ActionEditor (OBS ve PC formları), Sheets (Bağlantı, Ayarlar, Sayfa)
-test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (16), hub.test.ts (12, MockHub), layout.test.ts (3), serve-mock.ts (elle deneme)
+test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (19), hub.test.ts (12, MockHub), layout.test.ts (3), serve-mock.ts (elle deneme)
 ```
 
 ### Kalıplar
 - **Durum**: zustand v5. Seçici yeni nesne/dizi döndürüyorsa `useShallow` (yoksa sonsuz render).
 - **Otomatik sayfalar OBS'i izler** (K-021): profilde `autoScenesPageId` / `autoSfxPageId` doluysa `App.tsx` › `syncAutoPage` bağlanınca ve OBS'te sahne ya da kaynak listesi değişince (`scenes`, `inputs`) çalışır; alanlar silinmez. Kural `ops.ts` › `syncAutoButtons`: yalnız eksik adlar sona eklenir, tuş silinmez; değişiklik yoksa aynı diziyi döndürür (deste yeniden kaydedilmez). Sonuç `applyRemote` ile yazılır, geri alma geçmişine girmez. "Ses Efektleri" sahnesi sahne tuşlarından çıkarılır, efektler Türkçe sıralanır.
 - **Panel modu**: `panelMode` varsa ayarlar /panel-config.json'dan gelir, `deckSync` zorla açık; başlıklar "OBS paneli" / "Masaüstü paneli".
+- **Mikser sayfası** (K-023): `DeckPage.kind === 'mixer'` ise `App.tsx` DeckGrid yerine `MixerView` çizer; tuş listesi boş kalır. Düzeyler `useObs.volumes` (dB; `syncInputs`'ta `GetInputVolume`, olay `InputVolumeChanged`). Kaydırıcı sürüklerken 60 ms'de bir `SetInputVolume` yazar, bırakınca son değeri hemen yollar.
 - **Tuş durumu iki kaynaktan**: OBS tuşları `run.ts` › `buttonState` (useObs), bilgisayar ses tuşları `pcButtonState` (useHub.volume; `HubClient` bağlanınca ve `nudge`'da `volume get` ile okur). `DeckGrid.PlayButton` ikincisi null değilse onu kullanır.
 - **Bağlantı kapısı**: tuş OBS eylemi içeriyorsa OBS, pc eylemi içeriyorsa StudioHub bağlı olmalı (DeckGrid.PlayButton uyarır).
 - **Keycap**: dış görünüm (etek rengi `shade(-0.5)`) + degrade yüz; esneme `flexGrow/flexShrink` ile (flex:1 değil).

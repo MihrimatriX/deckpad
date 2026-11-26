@@ -10,6 +10,7 @@ import type { DeckButton } from '../src/deck/model';
 import { syncAutoButtons, validateProfile } from '../src/deck/ops';
 import { defaultProfile, sceneButtons, sceneOf } from '../src/deck/defaults';
 import { MockObs } from './mock-obs';
+import { dbToPos, formatDb, mixerChannels, posToDb } from '../src/deck/mixer';
 
 const PORT = 45455;
 const PASS = 'gizli-şifre';
@@ -100,6 +101,22 @@ describe('DeckPad ↔ OBS', () => {
     assert.equal(st.tone, 'live');
     assert.equal(st.iconOverride, 'mic-off');
     assert.equal(buttonState(btn([{ type: 'scene', scene: 'Oyun' }]), useObs.getState()).sub, 'YAYINDA');
+  });
+
+  test('mikser: düzeyler okunur, kaydırıcı yazar, olay durumu günceller', async () => {
+    const s = useObs.getState();
+    assert.equal(s.volumes['Desktop Audio'], 0);
+    assert.equal(s.volumes['Webcam'], undefined, 'sesi olmayan kaynak mikserde yok');
+    await obsClient.setInputVolumeDb('Desktop Audio', -12.5);
+    await waitFor(() => useObs.getState().volumes['Desktop Audio'] === -12.5);
+    await obsClient.setInputVolumeDb('Desktop Audio', -400);
+    await waitFor(() => useObs.getState().volumes['Desktop Audio'] === -100);
+    const ch = mixerChannels(s.inputs, s.muted, s.specialInputs, ['Alkış']);
+    assert.deepEqual(
+      ch.map((c) => c.name),
+      ['Desktop Audio', 'Mic/Aux'],
+      'genel aygıtlar başta, ses efekti gizli',
+    );
   });
 
   test('kaynak göster/gizle: mevcut durumu okuyup tersine çevirir', async () => {
@@ -212,4 +229,32 @@ describe('yardımcılar', () => {
     assert.ok(next.includes(home), 'OBS adına bağlı olmayan tuşlar korunur');
     assert.deepEqual(next.map(sceneOf).filter(Boolean), ['Kamera', 'Oyun']);
   });
+});
+
+test('mikser fader eğrisi ve dB yazımı', () => {
+  assert.equal(posToDb(0), -100);
+  assert.equal(posToDb(1), 0);
+  assert.ok(Math.abs(posToDb(0.5) + 18.06) < 0.1, 'orta nokta ≈ -18 dB');
+  for (const db of [-60, -18, -6, 0]) assert.ok(Math.abs(posToDb(dbToPos(db)) - db) < 1e-9);
+  assert.equal(dbToPos(6), 1, '0 dB üstü sona yapışır');
+  assert.equal(dbToPos(-100), 0);
+  assert.equal(formatDb(-100), '-∞');
+  assert.equal(formatDb(-12.54), '-12,5 dB');
+  assert.equal(formatDb(0), '0,0 dB');
+  assert.equal(formatDb(3), '+3,0 dB');
+  assert.equal(formatDb(undefined), '—');
+});
+
+test('mikser sayfası: varsayılan destede var, içe aktarmada türü korunur', () => {
+  const p = defaultProfile();
+  const mixer = p.pages.find((pg) => pg.kind === 'mixer');
+  assert.ok(mixer, 'varsayılan destede mikser sayfası');
+  assert.ok(
+    p.pages[0].buttons.some((b) => b.actions[0]?.type === 'page' && (b.actions[0] as any).pageId === mixer!.id),
+    'ana sayfadan mikser tuşu',
+  );
+  const round = validateProfile(JSON.parse(JSON.stringify(p)));
+  assert.equal(round.pages.find((pg) => pg.id === mixer!.id)?.kind, 'mixer');
+  const bogus = validateProfile({ pages: [{ id: 'x', name: 'X', kind: 'tuhaf', buttons: [] }] });
+  assert.equal(bogus.pages[0].kind, undefined);
 });

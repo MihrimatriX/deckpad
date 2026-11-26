@@ -15,6 +15,7 @@
 | canlı otomatik sayfalar (2026-11-15) | Sahneler ve Ses efektleri sayfaları OBS'i izler (K-021): bağlıyken OBS'e eklenen sahne ya da efekt yeniden bağlanmadan tuş olur; doldurma geri alma geçmişine girmez. |
 | camlink ayrımı (2026-11-26) | camlink'le her bağ koptu (K-022): `contracts.md` yalnız bu depo; eski `deckpad-camlink.lua` taşıma kodu silindi. Davranış değişikliği yok. |
 | günlük pürüzler (2026-11-26) | Bilgisayar ses tuşları Windows düzeyini gösterir (`volume get`); dikey telefonda tuşlar uzar, durum ekranı iki satıra çıkar ve yayındaki sahneyi gösterir; tanınmayan QR'da ne yapılacağı yazar; QR dinlenen portu taşır. |
+| mikser (2026-11-26) | Mikser sayfası (K-023): OBS ses kaynakları için sustur + kaydırıcı + dB; varsayılan destede ve "Mikser ekle" ile. |
 
 ## Doğrulanan
 
@@ -35,6 +36,8 @@
 - 2026-11-15, **gerçek OBS 33.0.1** (Windows) + StudioHub'ın WebView2 masaüstü paneli: panel OBS'e ve StudioHub'a bağlandı, Sahneler sayfası "Scene" ile doldu, deste `deck.json`'a yazıldı. WebSocket'ten `CreateScene` ile sahne eklenince OBS `SceneCreated` + `SceneListChanged` yolladı; panel 2,5 sn içinde tuşu ekleyip desteyi StudioHub'a gönderdi. `RemoveScene`'de de `SceneListChanged` geldi, tuş kaldı (K-021 sınırı). Deneme sahnesi ve tuşu geri alındı. **Telefonda henüz görülmedi; Ses efektleri sayfası gerçek OBS'te denenmedi.**
 
 - 2026-11-26, günlük pürüzler: 31/31 test, tsc temiz, `export:panel`. StudioHub DevServer + sahte OBS + Playwright (390×844 ve 1000×600): dikeyde tuşlar uzadı, durum ekranı "OBS · PC · Kamera" ve altında kayıt/yayın/CPU satırları; Bilgisayar sayfasında Ses −/+ "%40" gösterdi, Ses + ile %45, Sessiz'e basınca üç tuş "SESSİZ" oldu (DevServer günlüğünde `volume Get/Up/ToggleMute`). Tanınmayan QR uyarısı yalnız birim testte; **telefon kamerasında görülmedi**.
+
+- 2026-11-26, mikser: 34/34 test (düzeylerin okunması, `SetInputVolume` ve olayla güncelleme, fader eğrisi, sayfa türünün içe aktarmada korunması). DevServer + sahte OBS + Playwright: 390×844'te üç kanal, kaydırıcıyı fareyle %50'ye sürükleyince sahte OBS'te -18,1 dB oldu, mikrofonun sustur tuşu çalıştı; 1000×600'de iki sütun. **Gerçek OBS'te ve telefonda dokunmayla denenmedi.**
 
 **StudioHub**
 - xUnit testleri (40): KeyCombo, eşleştirme, eylem doğrulama, ayarlar, ini düzenleme, OBS yapılandırma (eski/yeni WebSocket), sunucu uçları, Host denetimi, WS kimlik doğrulama ve kilit, düzen paylaşımı.

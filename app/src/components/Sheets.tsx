@@ -422,9 +422,15 @@ export function PageSheet({ visible, onClose }: { visible: boolean; onClose: () 
   return (
     <Sheet visible={visible} onClose={onClose} title="Sayfa ayarları">
       <Field label="Sayfa adı" value={page.name} onChangeText={(name) => set({ name })} maxLength={24} />
-      <Stepper label="Sütun" value={page.cols} min={1} max={8} onChange={(cols) => set({ cols })} />
-      <Stepper label="Satır" value={page.rows} min={1} max={10} onChange={(rows) => set({ rows })} />
-      <Hint>Satır sayısı buton boyutunu belirler; fazla butonlar kaydırılarak görünür.</Hint>
+      {page.kind === 'mixer' ? (
+        <Hint>Mikser OBS'teki ses kaynaklarını kendiliğinden gösterir; ızgara ayarı yok.</Hint>
+      ) : (
+        <>
+          <Stepper label="Sütun" value={page.cols} min={1} max={8} onChange={(cols) => set({ cols })} />
+          <Stepper label="Satır" value={page.rows} min={1} max={10} onChange={(rows) => set({ rows })} />
+          <Hint>Satır sayısı buton boyutunu belirler; fazla butonlar kaydırılarak görünür.</Hint>
+        </>
+      )}
       <View style={styles.row}>
         <Btn title="Sola" icon="arrow-back" variant="secondary" style={{ flex: 1 }} disabled={idx === 0} onPress={() => mutate((p) => movePage(p, page.id, -1))} />
         <Btn

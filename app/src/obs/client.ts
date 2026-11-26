@@ -141,6 +141,9 @@ class ObsController {
     o.on('InputMuteStateChanged', (e) =>
       setObs((s) => ({ muted: { ...s.muted, [e.inputName]: e.inputMuted } })),
     );
+    o.on('InputVolumeChanged', (e) =>
+      setObs((s) => ({ volumes: { ...s.volumes, [e.inputName]: e.inputVolumeDb } })),
+    );
     o.on('InputCreated', () => void this.syncInputs());
     o.on('InputRemoved', () => void this.syncInputs());
     o.on('InputNameChanged', () => {
@@ -254,7 +257,24 @@ class ObsController {
     mutes.forEach((r, i) => {
       if (r.requestStatus.result) muted[inputs[i].name] = r.responseData.inputMuted;
     });
-    setObs({ inputs, specialInputs, muted });
+    // Düzey yalnız sesi olan kaynaklar için okunur (mikser sayfası).
+    const audio = Object.keys(muted);
+    const vols = audio.length
+      ? await this.batch(
+          audio.map((n) => ({ requestType: 'GetInputVolume', requestData: { inputName: n } })),
+          false,
+        )
+      : [];
+    const volumes: Record<string, number> = {};
+    vols.forEach((r, i) => {
+      if (r.requestStatus.result) volumes[audio[i]] = r.responseData.inputVolumeDb;
+    });
+    setObs({ inputs, specialInputs, muted, volumes });
+  }
+
+  /** Mikser kaydırıcısı: kaynağın düzeyini dB olarak yazar. OBS InputVolumeChanged ile doğrular. */
+  async setInputVolumeDb(inputName: string, db: number) {
+    await this.call('SetInputVolume', { inputName, inputVolumeDb: Math.max(-100, Math.min(26, db)) });
   }
 
   /** Butonlara bağlı kaynak ve filtre durumlarını OBS'ten okur. */

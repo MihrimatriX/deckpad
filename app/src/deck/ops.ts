@@ -26,9 +26,10 @@ export const duplicateButton = (p: DeckProfile, pageId: string, id: string): Dec
     return { ...pg, buttons };
   });
 
-export const addPage = (p: DeckProfile, name: string): { profile: DeckProfile; id: string } => {
+export const addPage = (p: DeckProfile, name: string, kind?: DeckPage['kind']): { profile: DeckProfile; id: string } => {
   const id = newId();
-  return { id, profile: { ...p, pages: [...p.pages, { id, name, cols: 3, rows: 4, buttons: [] }] } };
+  const page: DeckPage = { id, name, cols: 3, rows: 4, buttons: [], ...(kind ? { kind } : {}) };
+  return { id, profile: { ...p, pages: [...p.pages, page] } };
 };
 
 export const removePage = (p: DeckProfile, pageId: string): DeckProfile => {
@@ -83,6 +84,7 @@ export function validateProfile(raw: any): DeckProfile {
   const pages: DeckPage[] = raw.pages.map((pg: any) => ({
     id: String(pg.id || newId()),
     name: String(pg.name || 'Sayfa'),
+    ...(pg.kind === 'mixer' ? { kind: 'mixer' as const } : {}),
     cols: clamp(Number(pg.cols) || 3, 1, 8),
     rows: clamp(Number(pg.rows) || 4, 1, 10),
     buttons: Array.isArray(pg.buttons)
