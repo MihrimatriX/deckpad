@@ -38,18 +38,20 @@ src/deck/run.ts         runButton: ardışık OBS istekleri tek RequestBatch; "B
                         pc* eyleminden önce birikmiş OBS istekleri gönderilir (sıra korunur); toPcAction; buttonState (tally/alt etiket)
 src/deck/store.ts       deste (AsyncStorage, 250 ms gecikmeli kayıt), geri alma (40 adım), applyRemote (geçmişe eklemez)
 src/deck/ops.ts         saf yardımcılar, validateProfile (dışarıdan gelen desteyi doğrular)
+src/deck/layout.ts      fitGrid: ızgara yerleşimi (dikeyde tuşlar en çok 1,4 kat uzar, yatayda kare ve daha çok sütun)
 src/deck/defaults.ts    varsayılan deste: Ana, Sahneler (otomatik), Ses efektleri (otomatik), Slaytlar, Bilgisayar
 src/settings.ts         ayarlar AsyncStorage'da; OBS şifresi ve StudioHub anahtarı SecureStore'da (web'de AsyncStorage'a düşer)
 src/theme.ts            renk ve yazı anahtarları
 src/components/         ui.tsx (Keycap, Sheet, Btn, Chip, Field…), DeckGrid (+ bağlantı kapısı), DeckButtonView, Chrome (TopBar,
                         StatusDisplay, PageTabs), ButtonEditor, ActionEditor (OBS ve PC formları), Sheets (Bağlantı, Ayarlar, Sayfa)
-test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (16), hub.test.ts (10, MockHub), serve-mock.ts (elle deneme)
+test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (16), hub.test.ts (12, MockHub), layout.test.ts (3), serve-mock.ts (elle deneme)
 ```
 
 ### Kalıplar
 - **Durum**: zustand v5. Seçici yeni nesne/dizi döndürüyorsa `useShallow` (yoksa sonsuz render).
 - **Otomatik sayfalar OBS'i izler** (K-021): profilde `autoScenesPageId` / `autoSfxPageId` doluysa `App.tsx` › `syncAutoPage` bağlanınca ve OBS'te sahne ya da kaynak listesi değişince (`scenes`, `inputs`) çalışır; alanlar silinmez. Kural `ops.ts` › `syncAutoButtons`: yalnız eksik adlar sona eklenir, tuş silinmez; değişiklik yoksa aynı diziyi döndürür (deste yeniden kaydedilmez). Sonuç `applyRemote` ile yazılır, geri alma geçmişine girmez. "Ses Efektleri" sahnesi sahne tuşlarından çıkarılır, efektler Türkçe sıralanır.
 - **Panel modu**: `panelMode` varsa ayarlar /panel-config.json'dan gelir, `deckSync` zorla açık; başlıklar "OBS paneli" / "Masaüstü paneli".
+- **Tuş durumu iki kaynaktan**: OBS tuşları `run.ts` › `buttonState` (useObs), bilgisayar ses tuşları `pcButtonState` (useHub.volume; `HubClient` bağlanınca ve `nudge`'da `volume get` ile okur). `DeckGrid.PlayButton` ikincisi null değilse onu kullanır.
 - **Bağlantı kapısı**: tuş OBS eylemi içeriyorsa OBS, pc eylemi içeriyorsa StudioHub bağlı olmalı (DeckGrid.PlayButton uyarır).
 - **Keycap**: dış görünüm (etek rengi `shade(-0.5)`) + degrade yüz; esneme `flexGrow/flexShrink` ile (flex:1 değil).
 - **Yazı tipleri**: Barlow ağırlıkları alt yoldan içe aktarılır (`@expo-google-fonts/barlow/600SemiBold`); paket kökünden almak tüm ağırlıkları pakete ekler.
@@ -84,7 +86,7 @@ src/StudioHub (net10.0-windows; WPF, WinForms yalnız NotifyIcon için, WebView2
   Platform/Native.cs      P/Invoke bildirimleri
 src/StudioHub.DevServer   Linux/macOS'ta sahte platformla sunucu (Fakes.cs testlerde de kullanılır).
                           Ortam: OBS_CONFIG_DIR, HUB_ALL_LOCAL=1 (LAN'dan yönetime izin)
-tests/StudioHub.Core.Tests UnitTests.cs + HostTests.cs (41 test)
+tests/StudioHub.Core.Tests UnitTests.cs + HostTests.cs (43 test)
 web/hub                   yönetim arayüzü: bağımlılıksız HTML/CSS/JS, Barlow TTF'leri yerel
 ```
 

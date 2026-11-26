@@ -81,6 +81,15 @@ public class DispatcherTests
     }
 
     [Fact]
+    public async Task VolumeGetChangesNothing()
+    {
+        await D.RunAsync(new PcAction { Op = "volume", Mode = "set", Value = 42 });
+        var r = await D.RunAsync(new PcAction { Op = "volume", Mode = "get", Value = 99 });
+        Assert.True(r.Ok);
+        Assert.Equal("%42", r.Message);
+    }
+
+    [Fact]
     public async Task ReportsBadInput()
     {
         Assert.Equal("Bilinmeyen eylem: rm", (await D.RunAsync(new PcAction { Op = "rm" })).Message);

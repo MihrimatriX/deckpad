@@ -5,9 +5,10 @@ import { after, before, describe, test } from 'node:test';
 import * as WS from 'ws';
 import { HubClient, useHub } from '../src/hub/client';
 import { parsePairQr } from '../src/hub/pair';
+import { unknownQrHint } from '../src/obs/qr';
 import { validateCombo } from '../src/hub/keys';
 import { actionIncomplete, describeAction } from '../src/deck/actions';
-import { toPcAction, runButton } from '../src/deck/run';
+import { toPcAction, runButton, pcButtonState } from '../src/deck/run';
 import { defaultProfile } from '../src/deck/defaults';
 import { validateProfile } from '../src/deck/ops';
 
@@ -91,6 +92,12 @@ describe('StudioHub bağlantısı', () => {
     assert.equal(parsePairQr('studiohub://pair?host=1.2.3.4'), null);
   });
 
+  test('tanınmayan QR ne yapılacağını söyler', () => {
+    assert.match(unknownQrHint('https://example.com'), /web adresi/);
+    assert.match(unknownQrHint('obsws://bozuk'), /OBS/);
+    assert.match(unknownQrHint('WIFI:S:ev;T:WPA;P:x;;'), /DeckPad'e ait değil/);
+  });
+
   test('yanlış anahtar denemeyi durdurur', async () => {
     const c = new HubClient();
     c.start({ url, token: 'yanlis', clientName: 'test' });
@@ -99,6 +106,25 @@ describe('StudioHub bağlantısı', () => {
     await new Promise((r) => setTimeout(r, 1500));
     assert.equal(useHub.getState().status, 'error', 'yanlış anahtarla tekrar denememeli');
     c.stop();
+  });
+
+  test('bağlanınca ses düzeyi okunur ve ses tuşlarında görünür', async () => {
+    hub.runs = [];
+    const c = new HubClient();
+    c.start({ url, token: TOKEN, clientName: 'Pixel' });
+    await waitFor(() => useHub.getState().volume !== undefined);
+    assert.deepEqual(hub.runs[0], { op: 'volume', mode: 'get' });
+    const up = { id: 'u', label: 'Ses +', color: '#000', actions: [{ type: 'pcVolume' as const, mode: 'up' as const, value: 5 }] };
+    const mute = { id: 'm', label: 'Sessiz', color: '#000', actions: [{ type: 'pcVolume' as const, mode: 'toggleMute' as const }] };
+    assert.deepEqual(pcButtonState(up, useHub.getState()), { active: false, sub: '%35' });
+    assert.deepEqual(pcButtonState(mute, useHub.getState()), { active: false });
+    const muted = { ...useHub.getState(), volume: { level: 35, muted: true } };
+    assert.equal(pcButtonState(mute, muted)?.tone, 'live');
+    assert.equal(pcButtonState(up, muted)?.sub, 'SESSİZ');
+    // Bilgisayar tuşu olmayanlar OBS durumuna bırakılır.
+    assert.equal(pcButtonState({ ...up, actions: [{ type: 'record', mode: 'toggle' }] }, useHub.getState()), null);
+    c.stop();
+    assert.equal(useHub.getState().volume, undefined);
   });
 
   test('bilgisayar eylemleri gider ve sonuç döner', async () => {
@@ -124,6 +150,9 @@ describe('StudioHub bağlantısı', () => {
     hub.runs = [];
     hubClient.start({ url, token: TOKEN, clientName: 'Pixel' });
     await waitFor(() => useHub.getState().status === 'connected');
+    // Bağlanınca ses düzeyi okunur; tuş sırası denetiminin dışında tutulur.
+    await waitFor(() => hub.runs.some((a) => a.op === 'volume' && a.mode === 'get'));
+    hub.runs = [];
     const errors = await runButton(
       {
         id: 'b',

@@ -80,8 +80,9 @@ public sealed class HubHost : IAsyncDisposable
 
     public string BaseUrl => $"http://127.0.0.1:{Port}";
 
+    // QR dinlenen portu taşır: ayarda port değişip StudioHub henüz yeniden başlamadıysa telefon eski porta bağlanmalı.
     public PairInfo Pair(string? host = null) =>
-        PairInfo.From(Settings, host ?? NetInfo.PrimaryAddress()) with { ObsPassword = CurrentObsPassword };
+        PairInfo.From(Settings, host ?? NetInfo.PrimaryAddress()) with { ObsPassword = CurrentObsPassword, HubPort = Port > 0 ? Port : Settings.HubPort };
 
     // OBS'in kendi ayarı esas: kullanıcı şifreyi OBS'te değiştirse ya da "OBS'i hazırla" hiç çalışmasa da QR doğru şifreyi taşır.
     private string? CurrentObsPassword => Obs.ExistingPassword() ?? Settings.ObsPassword;

@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { addPage, useDeck } from '../deck/store';
 import { useHub } from '../hub/client';
 import { useObs } from '../obs/store';
@@ -56,7 +56,7 @@ export function TopBar({
   );
 }
 
-/** Gövdeye gömülü koyu cam ekran: bağlantı ışığı, kayıt ve yayın sayaçları, OBS ölçümleri. */
+/** Gövdeye gömülü koyu cam ekran: bağlantı ışığı, yayındaki sahne, kayıt ve yayın sayaçları, OBS ölçümleri. */
 function StatusDisplay({ onPress }: { onPress: () => void }) {
   const status = useObs((s) => s.status);
   const version = useObs((s) => s.obsVersion);
@@ -64,8 +64,12 @@ function StatusDisplay({ onPress }: { onPress: () => void }) {
   const record = useObs((s) => s.record);
   const stream = useObs((s) => s.stream);
   const stats = useObs((s) => s.stats);
+  const scene = useObs((s) => s.programScene);
   const showStats = useSettings((s) => s.showStats);
   const hub = useHub((h) => h.status);
+  const win = useWindowDimensions();
+  // Dar ve dikey ekranda (telefon) her şey tek şeride sığmaz; ekran iki satıra çıkar, hiçbir bilgi kaydırmaya gizlenmez.
+  const tall = win.width < 560 && win.height > win.width * 1.2;
   const connected = status === 'connected';
   const hubLed = hub === 'connected' ? navy.success : hub === 'error' ? navy.live : navy.warning;
 
@@ -78,45 +82,91 @@ function StatusDisplay({ onPress }: { onPress: () => void }) {
         ? error ?? 'Bağlanamadı'
         : "OBS'e bağlan";
   const dropped = stats ? stats.renderSkipped + stats.outputSkipped + (stream.dropped ?? 0) : 0;
-  // Kayıt veya yayın sürerken yer açmak için yalnızca "OBS" yazılır.
+  // Tek şeritte kayıt veya yayın sürerken yer açmak için yalnızca "OBS" yazılır.
   const busy = connected && (record.active || stream.active);
-  const shownTitle = busy ? 'OBS' : title;
+  const shownTitle = busy && !tall ? 'OBS' : title;
+
+  const head = (
+    <View style={[styles.segment, tall && styles.segmentGrow]} key="head">
+      <Led color={led} />
+      <Text style={[styles.dispTitle, !connected && { color: status === 'idle' ? navy.accent : led }]} numberOfLines={1}>
+        {shownTitle}
+      </Text>
+    </View>
+  );
+  const pc =
+    hub !== 'off' ? (
+      <Fragment key="pc">
+        <Ionicons name="desktop-outline" size={15} color={hubLed} accessibilityLabel={hub === 'connected' ? 'Bilgisayar bağlı' : 'Bilgisayar bağlı değil'} />
+        <Text style={[styles.caption, { color: hub === 'connected' ? navy.text : hubLed }]}>PC</Text>
+      </Fragment>
+    ) : null;
+  const sceneEl =
+    connected && scene ? (
+      <Fragment key="scene">
+        <Ionicons name="film-outline" size={15} color={navy.textMuted} accessibilityLabel="Yayındaki sahne" />
+        <Text style={[styles.scene, tall && styles.sceneTall]} numberOfLines={1}>
+          {scene}
+        </Text>
+      </Fragment>
+    ) : null;
+  const rec =
+    connected && record.active ? (
+      <Fragment key="rec">
+        <Led color={record.paused ? navy.warning : navy.live} blink={!record.paused} />
+        <Text style={[styles.time, { color: record.paused ? navy.warning : navy.live }]}>{record.timecode ?? '00:00:00'}</Text>
+      </Fragment>
+    ) : null;
+  const live =
+    connected && stream.active ? (
+      <Fragment key="live">
+        <Ionicons name="radio" size={15} color={navy.live} accessibilityLabel="Canlı yayın" />
+        <Text style={[styles.time, { color: navy.live }]}>{stream.timecode ?? '00:00:00'}</Text>
+        {stream.kbps !== undefined ? <Text style={styles.value}>{(stream.kbps / 1000).toFixed(1)} Mb/s</Text> : null}
+      </Fragment>
+    ) : null;
+  const meters =
+    connected && showStats && stats ? (
+      <Fragment key="stats">
+        <Text style={styles.caption}>CPU</Text>
+        <Text style={styles.value}>%{Math.round(stats.cpu)}</Text>
+        <Text style={styles.caption}>FPS</Text>
+        <Text style={styles.value}>{Math.round(stats.fps)}</Text>
+        {dropped > 0 ? <Text style={[styles.value, { color: navy.warning }]}>{dropped} kare düştü</Text> : null}
+      </Fragment>
+    ) : null;
+
+  if (tall) {
+    const second = [rec, live, meters].filter(Boolean);
+    return (
+      <Pressable onPress={onPress} style={[styles.display, styles.displayTall]} accessibilityRole="button" accessibilityLabel="OBS bağlantısı">
+        <View style={styles.tallRow}>
+          {head}
+          {pc ? <Segment>{pc}</Segment> : null}
+          {sceneEl ? <Segment grow>{sceneEl}</Segment> : null}
+        </View>
+        {second.length ? (
+          <View style={[styles.tallRow, styles.tallWrap]}>
+            {second.map((el, i) => (
+              <Segment key={i} first>
+                {el}
+              </Segment>
+            ))}
+          </View>
+        ) : null}
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable onPress={onPress} style={styles.display} accessibilityRole="button" accessibilityLabel="OBS bağlantısı">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.displayRow} style={styles.noGrow}>
-        <Led color={led} />
-        <Text style={[styles.dispTitle, !connected && { color: status === 'idle' ? navy.accent : led }]} numberOfLines={1}>
-          {shownTitle}
-        </Text>
-        {hub !== 'off' ? (
-          <Segment>
-            <Ionicons name="desktop-outline" size={15} color={hubLed} accessibilityLabel={hub === 'connected' ? 'Bilgisayar bağlı' : 'Bilgisayar bağlı değil'} />
-            <Text style={[styles.caption, { color: hub === 'connected' ? navy.text : hubLed }]}>PC</Text>
-          </Segment>
-        ) : null}
-        {connected && record.active ? (
-          <Segment>
-            <Led color={record.paused ? navy.warning : navy.live} blink={!record.paused} />
-            <Text style={[styles.time, { color: record.paused ? navy.warning : navy.live }]}>{record.timecode ?? '00:00:00'}</Text>
-          </Segment>
-        ) : null}
-        {connected && stream.active ? (
-          <Segment>
-            <Ionicons name="radio" size={15} color={navy.live} accessibilityLabel="Canlı yayın" />
-            <Text style={[styles.time, { color: navy.live }]}>{stream.timecode ?? '00:00:00'}</Text>
-            {stream.kbps !== undefined ? <Text style={styles.value}>{(stream.kbps / 1000).toFixed(1)} Mb/s</Text> : null}
-          </Segment>
-        ) : null}
-        {connected && showStats && stats ? (
-          <Segment>
-            <Text style={styles.caption}>CPU</Text>
-            <Text style={styles.value}>%{Math.round(stats.cpu)}</Text>
-            <Text style={styles.caption}>FPS</Text>
-            <Text style={styles.value}>{Math.round(stats.fps)}</Text>
-            {dropped > 0 ? <Text style={[styles.value, { color: navy.warning }]}>{dropped} kare düştü</Text> : null}
-          </Segment>
-        ) : null}
+        {head}
+        {pc ? <Segment>{pc}</Segment> : null}
+        {sceneEl ? <Segment>{sceneEl}</Segment> : null}
+        {rec ? <Segment>{rec}</Segment> : null}
+        {live ? <Segment>{live}</Segment> : null}
+        {meters ? <Segment>{meters}</Segment> : null}
       </ScrollView>
       {/* Sağ kenar geçişi: şeridin kaydırılabildiğini gösterir */}
       <LinearGradient
@@ -130,10 +180,10 @@ function StatusDisplay({ onPress }: { onPress: () => void }) {
   );
 }
 
-function Segment({ children }: { children: ReactNode }) {
+function Segment({ children, first, grow }: { children: ReactNode; first?: boolean; grow?: boolean }) {
   return (
-    <View style={styles.segment}>
-      <View style={styles.divider} />
+    <View style={[styles.segment, grow && styles.segmentGrow]}>
+      {first ? null : <View style={styles.divider} />}
       {children}
     </View>
   );
@@ -247,6 +297,12 @@ const styles = StyleSheet.create({
   editHint: { color: navy.textMuted, fontFamily: font.body, fontSize: 12 },
   dispTitle: { color: navy.text, fontFamily: font.keyBold, fontSize: 16, maxWidth: 220 },
   segment: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  segmentGrow: { flexShrink: 1, minWidth: 0 },
+  displayTall: { height: 'auto', minHeight: 46, justifyContent: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, gap: 5 },
+  tallRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 24 },
+  tallWrap: { flexWrap: 'wrap', rowGap: 4, columnGap: 14 },
+  scene: { color: navy.text, fontFamily: font.keyBold, fontSize: 14, maxWidth: 180 },
+  sceneTall: { maxWidth: undefined, flexShrink: 1 },
   divider: { width: 1, height: 22, backgroundColor: navy.glassEdge, marginRight: 3 },
   time: { fontFamily: font.display, fontSize: 18, fontVariant: ['tabular-nums'], letterSpacing: 0.4 },
   caption: { color: navy.textMuted, fontFamily: font.medium, fontSize: 11.5 },

@@ -20,13 +20,17 @@ const toneColor: Record<Tone, string> = {
 export const DeckButtonView = memo(function DeckButtonView({
   button,
   size,
+  height = size,
   state,
   editing,
   incomplete,
   pressed,
 }: {
   button: DeckButton;
+  /** Tuş genişliği; yazı ve simge buna göre ölçeklenir. */
   size: number;
+  /** Tuş yüksekliği (varsayılan kare). Dikey telefonda boş kalan yükseklik tuşu uzatır. */
+  height?: number;
   state: ButtonState;
   editing?: boolean;
   incomplete?: boolean;
@@ -37,7 +41,7 @@ export const DeckButtonView = memo(function DeckButtonView({
 
   if (button.spacer) {
     return (
-      <View style={{ width: size, height: size }}>
+      <View style={{ width: size, height }}>
         <View style={[styles.well, { borderRadius: r + inset }, editing && styles.spacerEdit]} />
       </View>
     );
@@ -54,7 +58,7 @@ export const DeckButtonView = memo(function DeckButtonView({
   const color = button.color;
 
   return (
-    <View style={{ width: size, height: size }}>
+    <View style={{ width: size, height }}>
       {tc ? <Halo color={tc} radius={r + inset + 3} pulse={state.tone === 'live'} /> : null}
       {/* Gövdedeki yuva */}
       <View style={[styles.well, { borderRadius: r + inset }]} />
@@ -95,7 +99,7 @@ export const DeckButtonView = memo(function DeckButtonView({
           ) : null}
           {showSub ? (
             <View style={[styles.subPill, { backgroundColor: tc ?? navy.glass }]}>
-              <Text style={[styles.subText, { fontSize: Math.max(9, Math.min(12, size * 0.09)) }]} numberOfLines={1}>
+              <Text style={[styles.subText, !tc && { color: navy.text }, { fontSize: Math.max(9, Math.min(12, size * 0.09)) }]} numberOfLines={1}>
                 {state.sub}
               </Text>
             </View>

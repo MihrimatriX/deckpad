@@ -19,7 +19,8 @@ public sealed class PcAction
 
 public enum MediaKey { PlayPause, Next, Previous, Stop }
 
-public enum VolumeCommand { Set, Up, Down, Mute, Unmute, ToggleMute }
+/// <summary>Get: hiçbir şeyi değiştirmeden geçerli düzeyi okur (tuşlarda düzeyi göstermek için).</summary>
+public enum VolumeCommand { Get, Set, Up, Down, Mute, Unmute, ToggleMute }
 
 public enum SlideCommand { Next, Previous, First, Last, Start, End, Black }
 
@@ -86,6 +87,7 @@ public sealed class PcActionDispatcher(IPcPlatform platform)
                     {
                         var cmd = a.Mode switch
                         {
+                            "get" => VolumeCommand.Get,
                             "set" => VolumeCommand.Set,
                             "up" => VolumeCommand.Up,
                             "down" => VolumeCommand.Down,

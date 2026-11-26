@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { defaultProfile, muteButtons, sceneButtons } from '../deck/defaults';
 import { addPage, movePage, removePage, updatePage, useDeck, validateProfile } from '../deck/store';
 import { obsClient } from '../obs/client';
-import { parseObsQr } from '../obs/qr';
+import { parseObsQr, unknownQrHint } from '../obs/qr';
 import { useObs } from '../obs/store';
 import { hubClient, hubUrl, useHub } from '../hub/client';
 import { parsePairQr, type PairInfo } from '../hub/pair';
@@ -197,10 +197,19 @@ function QrScanner({
   const [perm, requestPerm] = useCameraPermissions();
   const insets = useSafeAreaInsets();
   const [done, setDone] = useState(false);
+  // Tanınmayan kod: kamera aynı kodu sürekli okur, bu yüzden yalnız yeni bir kodda ileti değişir.
+  const [unknown, setUnknown] = useState<{ data: string; hint: string } | null>(null);
+
+  useEffect(() => {
+    if (!unknown) return;
+    const t = setTimeout(() => setUnknown(null), 4000);
+    return () => clearTimeout(t);
+  }, [unknown]);
 
   useEffect(() => {
     if (visible) {
       setDone(false);
+      setUnknown(null);
       if (perm && !perm.granted && perm.canAskAgain) void requestPerm();
     }
   }, [visible, perm, requestPerm]);
@@ -221,6 +230,8 @@ function QrScanner({
                     if (r) {
                       setDone(true);
                       onResult(r);
+                    } else if (unknown?.data !== data) {
+                      setUnknown({ data, hint: unknownQrHint(data) });
                     }
                   }
             }
@@ -238,6 +249,12 @@ function QrScanner({
             <Ionicons name="close" size={26} color="#fff" />
           </Pressable>
         </View>
+        {unknown ? (
+          <View style={[styles.scanHint, { bottom: insets.bottom + 32 }]} accessibilityLiveRegion="polite">
+            <Ionicons name="alert-circle" size={22} color={navy.warning} />
+            <Text style={styles.scanHintText}>{unknown.hint}</Text>
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -487,4 +504,18 @@ const styles = StyleSheet.create({
   },
   scanTitle: { color: '#fff', fontSize: 17, fontFamily: font.semi, flex: 1 },
   scanClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  scanHint: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(4,10,24,0.88)',
+    borderWidth: 1,
+    borderColor: navy.warning,
+  },
+  scanHintText: { color: '#fff', fontFamily: font.medium, fontSize: 15, lineHeight: 20, flex: 1 },
 });

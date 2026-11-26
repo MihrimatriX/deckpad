@@ -18,13 +18,13 @@ FFmpeg ve Unity Capture K-016 ile çıktı.
 # DeckPad
 cd app && npm ci
 npm run typecheck                  # tsc --noEmit -p .
-npm test                           # 26 test (obs.test.ts 16, hub.test.ts 10)
+npm test                           # 31 test (obs.test.ts 16, hub.test.ts 12, layout.test.ts 3)
 npx tsx test/serve-mock.ts 4455    # elle deneme için sahte OBS
 npm run export:panel               # web derlemesi → ../studiohub/web/panel
 npx expo prebuild -p android && cd android && ./gradlew assembleRelease   # APK (~35 MB, hata ayıklama anahtarıyla imzalı)
 
 # StudioHub (kökten)
-dotnet test studiohub/tests/StudioHub.Core.Tests                     # 41 test
+dotnet test studiohub/tests/StudioHub.Core.Tests                     # 43 test
 dotnet run --project studiohub/src/StudioHub.DevServer -- <veri> <panel> <hub> [obs-paketi]   # http://127.0.0.1:4466/hub/
 dotnet publish studiohub/src/StudioHub -c Release -o studiohub/out/dist                       # win-x64, self-contained; klasörde yalnız StudioHub.exe (~80 MB)
 

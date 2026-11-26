@@ -47,7 +47,7 @@ Kapanış kodları: 4001 yanlış anahtar (istemci yeniden denemez), 4003 anahta
 
 **PcAction** (`op` alanı türü belirler):
 `keys {keys:"Ctrl+Shift+M"}` · `text {text}` (≤2000) · `launch {path,args?}` · `url {url}` (yalnız http/https) ·
-`media {key: playPause|next|previous|stop}` · `volume {mode: set|up|down|mute|unmute|toggleMute, value?}` (set 0–100, adım 1–50) ·
+`media {key: playPause|next|previous|stop}` · `volume {mode: get|set|up|down|mute|unmute|toggleMute, value?}` (set 0–100, adım 1–50; `get` hiçbir şeyi değiştirmez, DeckPad bağlanınca ve öne gelince düzeyi okur; sonuç her modda `data: {level, muted}`) ·
 `slide {dir: next|previous|first|last|start|end|black}` (önce PowerPoint COM, yoksa öndeki pencereye tuş).
 
 Kısayol adları: Ctrl/Alt/Shift/Win; A–Z, 0–9, F1–F24, Enter, Esc, Space/Boşluk, Tab, Sol/Sağ/Yukarı/Aşağı (İngilizcesi de), PageUp/Down, Home, End, Delete, Insert, medya ve ses tuşları; `Ctrl++` artı tuşudur. Doğrulama iki yerde aynı kurallarla: `studiohub/src/StudioHub.Core/Helper/KeyCombo.cs` ve `app/src/hub/keys.ts`.
