@@ -8,6 +8,8 @@ import { dbToPos, formatDb, mixerChannels, posToDb, type MixerChannel } from '..
 import { OBS_NAMES } from '../deck/model';
 import { obsClient } from '../obs/client';
 import { useObs } from '../obs/store';
+import { METER_FLOOR_DB, meterPos, useMeters } from '../obs/meters';
+import { useAppActive } from '../obs/thumbs';
 import { useSettings } from '../settings';
 import { font, navy } from '../theme';
 import { Keycap, toast } from './ui';
@@ -27,6 +29,14 @@ export function MixerView({ editing }: { editing: boolean }) {
   const scenes = useObs((s) => s.scenes);
   const { width } = useWindowDimensions();
   const [sfx, setSfx] = useState<string[]>([]);
+  const active = useAppActive();
+
+  // Ölçer akışı yalnız mikser ekrandayken ve uygulama öndeyken açık (saniyede ~20 ileti).
+  useEffect(() => {
+    if (status !== 'connected' || !active) return;
+    void obsClient.setMeters(true);
+    return () => void obsClient.setMeters(false);
+  }, [status, active]);
 
   // Ses efektleri sahnesindeki klipler mikserde gösterilmez.
   useEffect(() => {
@@ -131,6 +141,7 @@ const ChannelStrip = memo(function ChannelStrip({ channel }: { channel: MixerCha
         </View>
         <Text style={[styles.db, isMuted && { color: navy.textMuted }]}>{formatDb(shownDb)}</Text>
       </View>
+      <Meter name={name} muted={isMuted} />
       <Fader
         pos={drag ?? dbToPos(db ?? -100)}
         muted={isMuted}
@@ -248,6 +259,37 @@ function Fader({
   );
 }
 
+// Ölçer renkleri dB'ye göre: -20'ye kadar yeşil, -9'a kadar sarı, üstü kırmızı (OBS'in mikseriyle aynı bölgeler).
+const METER_COLORS = [navy.success, navy.success, navy.warning, navy.warning, navy.live] as const;
+const METER_STOPS = [0, meterPos(-20), meterPos(-19.9), meterPos(-9), meterPos(-8.9)] as const;
+
+/**
+ * Kanalın canlı ses ölçeri: stereo ise iki ince çubuk, tepe göstergesiyle.
+ * Renkli şerit tam genişlikte çizilir, düzey kadar açılan bir pencereden görünür; böylece renk bölgeleri sabit kalır.
+ */
+const Meter = memo(function Meter({ name, muted }: { name: string; muted: boolean }) {
+  const chans = useMeters((s) => s.levels[name]);
+  const bars = chans?.length ? chans : [{ level: METER_FLOOR_DB, hold: METER_FLOOR_DB }];
+  return (
+    <View style={[styles.meter, muted && { opacity: 0.35 }]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {bars.map((c, i) => (
+        <View key={i} style={[styles.meterBar, bars.length === 1 && styles.meterBarMono]}>
+          <View style={[styles.meterWindow, { width: `${meterPos(c.level) * 100}%` }]}>
+            <LinearGradient
+              colors={METER_COLORS as unknown as [string, string, ...string[]]}
+              locations={METER_STOPS as unknown as [number, number, ...number[]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.meterFill, { width: `${100 / Math.max(0.001, meterPos(c.level))}%` }]}
+            />
+          </View>
+          {c.hold > METER_FLOOR_DB ? <View style={[styles.meterHold, { left: `${meterPos(c.hold) * 100}%`, backgroundColor: c.hold > -9 ? navy.live : c.hold > -20 ? navy.warning : navy.success }]} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+});
+
 const clamp = (p: number) => Math.max(0, Math.min(1, Number.isFinite(p) ? p : 0));
 
 const styles = StyleSheet.create({
@@ -293,6 +335,12 @@ const styles = StyleSheet.create({
   state: { color: navy.textMuted, fontFamily: font.medium, fontSize: 12.5, marginTop: 1 },
   db: { color: navy.text, fontFamily: font.display, fontSize: 18, fontVariant: ['tabular-nums'], minWidth: 78, textAlign: 'right' },
   faderHit: { height: 48, justifyContent: 'center', marginHorizontal: 14 },
+  meter: { marginHorizontal: 14, marginTop: 12, gap: 2 },
+  meterBar: { height: 4, borderRadius: 2, backgroundColor: navy.well, overflow: 'hidden' },
+  meterBarMono: { height: 6, borderRadius: 3 },
+  meterWindow: { position: 'absolute', left: 0, top: 0, bottom: 0, overflow: 'hidden' },
+  meterFill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
+  meterHold: { position: 'absolute', top: 0, bottom: 0, width: 2, marginLeft: -1 },
   groove: {
     height: 10,
     borderRadius: 5,

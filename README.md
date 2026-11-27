@@ -76,7 +76,7 @@ Gerekenler: Node.js 20+, .NET 10 SDK. Android derlemesi için JDK 17 ve Android 
 # DeckPad
 cd app
 npm ci
-npm run typecheck && npm test          # 25 test: sahte OBS ve sahte StudioHub'a karşı
+npm run typecheck && npm test          # 39 test: sahte OBS ve sahte StudioHub'a karşı
 npx expo start                         # Expo Go ile telefonda dene (yerel modül yok)
 
 # StudioHub
@@ -93,7 +93,7 @@ APK elle: `cd app && npx expo prebuild -p android && cd android && ./gradlew ass
 
 | | Doğrulandı | Henüz denenmedi |
 |---|---|---|
-| DeckPad | 34 test; APK Windows'ta derlenip telefona kuruldu; OBS paneli gerçek OBS 32.2.2'de tuşlarla çalıştı (bildirim) | Telefonda QR ile bağlanma, iOS |
+| DeckPad | 39 test; APK Windows'ta derlenip telefona kuruldu; OBS paneli gerçek OBS 32.2.2'de tuşlarla çalıştı (bildirim) | Telefonda QR ile bağlanma, iOS |
 | StudioHub | 43 test; "OBS'i hazırla" dosyalarını gerçek OBS 30.0.2 okudu; Windows 11'de WPF kabuğu ve yönetim arayüzü açıldı | SendInput, Core Audio, PowerPoint, UAC; "OBS'i hazırla" OBS 32'de |
 | OBS betiği | Gerçek OBS 30.0.2'de tüm adımlar, tekrar çalıştırma, efekt ve slayt tuşları | OBS 31+ |
 

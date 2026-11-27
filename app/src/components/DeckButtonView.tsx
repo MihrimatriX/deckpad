@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useEffect, useRef } from 'react';
-import { AccessibilityInfo, Animated, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Image, StyleSheet, Text, View } from 'react-native';
 import type { DeckButton } from '../deck/model';
 import type { ButtonState, Tone } from '../deck/run';
 import { font, navy, shade, withAlpha } from '../theme';
@@ -25,6 +25,7 @@ export const DeckButtonView = memo(function DeckButtonView({
   editing,
   incomplete,
   pressed,
+  image,
 }: {
   button: DeckButton;
   /** Tuş genişliği; yazı ve simge buna göre ölçeklenir. */
@@ -35,6 +36,8 @@ export const DeckButtonView = memo(function DeckButtonView({
   editing?: boolean;
   incomplete?: boolean;
   pressed?: boolean;
+  /** Sahnenin canlı küçük resmi (data URI); varsa tuşun yüzünü kaplar, etiket altta okunur kalır. */
+  image?: string;
 }) {
   const r = Math.max(10, size * 0.16);
   const inset = Math.max(2, Math.round(size * 0.03));
@@ -87,18 +90,24 @@ export const DeckButtonView = memo(function DeckButtonView({
             },
           ]}
         >
+          {image ? (
+            <>
+              <Image source={{ uri: image }} style={StyleSheet.absoluteFill} resizeMode="cover" fadeDuration={0} accessibilityIgnoresInvertColors />
+              <LinearGradient pointerEvents="none" colors={['rgba(4,10,24,0)', 'rgba(4,10,24,0.85)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
+            </>
+          ) : null}
           <View pointerEvents="none" style={[styles.highlight, { borderTopLeftRadius: r, borderTopRightRadius: r }]} />
           {tc ? <View style={[styles.led, { backgroundColor: tc, shadowColor: tc, width: size * 0.32 }]} /> : null}
-          {button.icon ? (
+          {image ? null : button.icon ? (
             <Ionicons name={(state.iconOverride ?? button.icon) as any} size={iconSize} color="rgba(255,255,255,0.96)" style={styles.engrave} />
           ) : null}
           {button.label ? (
-            <Text style={[styles.label, { fontSize: labelSize, lineHeight: labelSize * 1.12 }]} numberOfLines={2}>
+            <Text style={[styles.label, image && styles.labelOnImage, { fontSize: labelSize, lineHeight: labelSize * 1.12 }]} numberOfLines={2}>
               {button.label}
             </Text>
           ) : null}
           {showSub ? (
-            <View style={[styles.subPill, { backgroundColor: tc ?? navy.glass }]}>
+            <View style={[styles.subPill, image && styles.subOnImage, { backgroundColor: tc ?? navy.glass }]}>
               <Text style={[styles.subText, !tc && { color: navy.text }, { fontSize: Math.max(9, Math.min(12, size * 0.09)) }]} numberOfLines={1}>
                 {state.sub}
               </Text>
@@ -206,6 +215,8 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
+  labelOnImage: { position: 'absolute', left: 6, right: 6, bottom: 8 },
+  subOnImage: { position: 'absolute', top: 10 },
   subPill: { borderRadius: 5, paddingHorizontal: 6, paddingVertical: 1, maxWidth: '100%' },
   subText: { color: '#050C1F', fontFamily: font.keyBold, letterSpacing: 0.3, fontVariant: ['tabular-nums'] },
   corner: { position: 'absolute' },

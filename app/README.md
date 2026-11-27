@@ -16,11 +16,11 @@ Telefon ve bilgisayar aynı Wi-Fi ağında olmalı. Bağlantı koparsa uygulama 
 ## Neler var
 
 - **Kayıt ve yayın:** başlat, durdur, duraklat, devam ettir. Butonlarda canlı süre görünür.
-- **Sahneler:** ilk bağlantıda "Sahneler" sayfası OBS'teki sahnelerle kendiliğinden dolar. Yayındaki sahne kırmızı, Studio Mode önizlemesi yeşil yanar.
+- **Sahneler:** ilk bağlantıda "Sahneler" sayfası OBS'teki sahnelerle kendiliğinden dolar. Yayındaki sahne kırmızı, Studio Mode önizlemesi yeşil yanar. Sahne tuşlarında sahnenin küçük canlı görüntüsü, sayfanın üstünde (yatayda solunda) yayındaki görüntü; Studio Mode'da önizleme yanında, **Yayına al** ile geçilir. Önizleme her sayfada **Sayfa ayarları › Canlı önizleme** ile açılıp kapanır; ağ ve pil için **Ayarlar › Canlı sahne görüntüleri** hepsini kapatır.
 - **Geçişler:** geçiş türü ve süresi seçme, Studio Mode, önizlemeyi yayına alma.
 - **Kaynaklar ve efektler:** logo, alt yazı, kamera gibi kaynakları göster/gizle; filtre aç/kapat (blur, renk düzeltme, chroma key...).
 - **Ses:** mikrofon ve masaüstü sesini kapat/aç, ses seviyesi ayarla. Kapalıyken buton kırmızı yanar.
-- **Mikser:** OBS'te sesi olan her kaynak için sustur tuşu ve kaydırıcı (dB). Kaynak listesi OBS'ten gelir; masaüstü sesi ve mikrofon başta, ses efektleri gizli. Eski destelerde düzenleme modunda alttaki **Mikser ekle** ile eklenir.
+- **Mikser:** OBS'te sesi olan her kaynak için canlı ses ölçeri (stereo, tepe çizgisiyle), sustur tuşu ve kaydırıcı (dB). Kaynak listesi OBS'ten gelir; masaüstü sesi ve mikrofon başta, ses efektleri gizli. Eski destelerde düzenleme modunda alttaki **Mikser ekle** ile eklenir.
 - **Ses efektleri:** OBS kurulum betiği "Ses Efektleri" sahnesini oluşturduysa sayfa kendiliğinden dolar. Elle: OBS'te ses dosyasıyla bir Medya Kaynağı ekle, butonuna "Medya kontrolü › Baştan oynat" ver.
 - **Slaytlar:** Önceki/Sonraki tuşları betiğin oluşturduğu "Slayt gösterisi" kaynağını ilerletir.
 - **Bilgisayar eylemleri (StudioHub):** PowerPoint ya da tarayıcıdaki sunumu ilerletme, siyah ekran; klavye kısayolu (Teams/Zoom mikrofon, ekran alıntısı…); Spotify/YouTube medya tuşları; Windows ses düzeyi; uygulama, dosya ya da web sayfası açma; hazır metin yazma.

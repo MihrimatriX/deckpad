@@ -21,6 +21,8 @@ export interface Settings {
   hubName: string;
   /** Tuş düzenini bilgisayardaki panellerle eşitle. */
   deckSync: boolean;
+  /** Sahne tuşlarında küçük canlı görüntü ve sayfalardaki canlı önizleme (OBS'ten JPEG ister). */
+  sceneThumbs: boolean;
 }
 
 interface SettingsStore extends Settings {
@@ -41,6 +43,7 @@ const defaults: Settings = {
   hubToken: '',
   hubName: '',
   deckSync: false,
+  sceneThumbs: true,
 };
 
 // Telefonda Android Keystore destekli güvenli depo; tarayıcıda (bilgisayar paneli) böyle bir depo yok.

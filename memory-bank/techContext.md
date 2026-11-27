@@ -18,7 +18,7 @@ FFmpeg ve Unity Capture K-016 ile çıktı.
 # DeckPad
 cd app && npm ci
 npm run typecheck                  # tsc --noEmit -p .
-npm test                           # 34 test (obs.test.ts 19, hub.test.ts 12, layout.test.ts 3)
+npm test                           # 39 test (obs.test.ts 24, hub.test.ts 12, layout.test.ts 3)
 npx tsx test/serve-mock.ts 4455    # elle deneme için sahte OBS
 npm run export:panel               # web derlemesi → ../studiohub/web/panel
 npx expo prebuild -p android && cd android && ./gradlew assembleRelease   # APK (~35 MB, hata ayıklama anahtarıyla imzalı)

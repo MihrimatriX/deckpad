@@ -6,6 +6,7 @@ import Animated, { useAnimatedRef } from 'react-native-reanimated';
 import Sortable, { type SortableGridRenderItem } from 'react-native-sortables';
 import { buttonIncomplete } from '../deck/actions';
 import { fitGrid, GAP } from '../deck/layout';
+import { useSceneThumbs, useThumbs } from '../obs/thumbs';
 import type { DeckButton, DeckPage } from '../deck/model';
 import { isPcAction } from '../deck/model';
 import { buttonState, pcButtonState, runButton } from '../deck/run';
@@ -56,6 +57,10 @@ export function DeckGrid({ page, onEditButton }: { page: DeckPage; onEditButton:
 // ---------- Normal mod: basınca çalışır ----------
 
 function PlayGrid({ page, size, height, width }: { page: DeckPage; size: number; height: number; width: number }) {
+  // Bu sayfadaki sahne tuşlarının küçük resimleri birkaç saniyede bir tazelenir.
+  const thumbsOn = useSettings((s) => s.sceneThumbs);
+  const scenes = useMemo(() => [...new Set(page.buttons.map(sceneOfButton).filter((x): x is string => !!x))], [page.buttons]);
+  useSceneThumbs(scenes, thumbsOn, Math.min(320, Math.round(size * 2)));
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Faceplate>
@@ -71,9 +76,13 @@ function PlayGrid({ page, size, height, width }: { page: DeckPage; size: number;
 
 function PlayButton({ button, size, height }: { button: DeckButton; size: number; height: number }) {
   const obsState = useObs(useShallow((s) => buttonState(button, s)));
+  const thumbsOn = useSettings((s) => s.sceneThumbs);
+  const connected = useObs((s) => s.status === 'connected');
+  const scene = sceneOfButton(button);
+  // OBS bağlı değilken eski görüntü gösterilmez.
+  const image = useThumbs((t) => (thumbsOn && connected && scene ? t.images[scene] : undefined));
   const pcState = useHub(useShallow((h) => pcButtonState(button, h)));
   const state = pcState ?? obsState;
-  const connected = useObs((s) => s.status === 'connected');
   const pcConnected = useHub((s) => s.status === 'connected');
   const haptics = useSettings((s) => s.haptics);
   const setPage = useDeck((s) => s.setPage);
@@ -128,6 +137,7 @@ function PlayButton({ button, size, height }: { button: DeckButton; size: number
           button={button}
           size={size}
           height={height}
+          image={image}
           state={state}
           pressed={pressed || busy}
           incomplete={buttonIncomplete(button)}
@@ -217,3 +227,10 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
 });
+
+/** Tuş bir sahneye geçiyorsa (yayına ya da önizlemeye) o sahnenin adı; küçük resim için. */
+function sceneOfButton(b: DeckButton): string | undefined {
+  if (b.spacer || b.showState === false) return undefined;
+  const a = b.actions.find((x) => x.type !== 'delay');
+  return a && (a.type === 'scene' || a.type === 'previewScene') && a.scene ? a.scene : undefined;
+}

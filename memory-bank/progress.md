@@ -37,6 +37,8 @@
 
 - 2026-11-26, günlük pürüzler: 31/31 test, tsc temiz, `export:panel`. StudioHub DevServer + sahte OBS + Playwright (390×844 ve 1000×600): dikeyde tuşlar uzadı, durum ekranı "OBS · PC · Kamera" ve altında kayıt/yayın/CPU satırları; Bilgisayar sayfasında Ses −/+ "%40" gösterdi, Ses + ile %45, Sessiz'e basınca üç tuş "SESSİZ" oldu (DevServer günlüğünde `volume Get/Up/ToggleMute`). Tanınmayan QR uyarısı yalnız birim testte; **telefon kamerasında görülmedi**.
 
+- 2026-11-27, ses ölçerleri ve canlı görüntü (K-024): 39/39 test (ölçer aboneliği yalnız istenince ve `Reidentify` ile, ekran görüntüleri tek batch'te, ölçer tepe düşüşü, stüdyo modu açılınca önizlemenin okunması ve geçişin önizlemeyi yayına alması, önizleme seçiminin içe aktarmada korunması), tsc temiz, `export:panel`. DevServer + sahte OBS + Playwright (390×844, 1000×600): mikserde dalgalanan stereo çubuklar ve tepe çizgileri, susturulan kanal boş; Sahneler sayfasında tuşlarda küçük görüntü, üstte "CANLI" program görüntüsü; OBS'te stüdyo modu açılınca önizleme yanında belirdi, "Yayına al"a basınca sahte OBS'te program değişti ve tuşlar YAYINDA/ÖNİZLEME'yi takas etti; yatayda görüntü solda; sayfa ayarındaki anahtar önizlemeyi kapatıp açtı ve bilgisayardaki desteye yazıldı. **Gerçek OBS'te (ekran görüntüsü hızı) ve telefonda denenmedi.**
+
 - 2026-11-26, mikser: 34/34 test (düzeylerin okunması, `SetInputVolume` ve olayla güncelleme, fader eğrisi, sayfa türünün içe aktarmada korunması). DevServer + sahte OBS + Playwright: 390×844'te üç kanal, kaydırıcıyı fareyle %50'ye sürükleyince sahte OBS'te -18,1 dB oldu, mikrofonun sustur tuşu çalıştı; 1000×600'de iki sütun. **Gerçek OBS'te ve telefonda dokunmayla denenmedi.**
 
 **StudioHub**
