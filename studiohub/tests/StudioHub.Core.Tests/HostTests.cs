@@ -265,6 +265,19 @@ public class LockoutTests
         Assert.Equal(4029, (int)locked.CloseStatus!);
     }
 
+    [Fact]
+    public async Task QrKeepsListeningPortUntilRestart()
+    {
+        await using var _ = await StartOwn(out var fx);
+        var req = new HttpRequestMessage(HttpMethod.Put, "/api/settings") { Content = System.Net.Http.Json.JsonContent.Create(new { hubPort = fx.Port + 1 }) };
+        req.Headers.Add(HubHost.ApiHeader, "1");
+        var body = await (await fx.Http.SendAsync(req)).Content.ReadFromJsonAsync<JsonObject>();
+        Assert.True(body!["restartNeeded"]!.GetValue<bool>());
+        Assert.Equal(fx.Port + 1, fx.Host.Settings.HubPort);
+        // Sunucu hâlâ eski portta; QR telefonu oraya göndermeli.
+        Assert.Equal(fx.Port, fx.Host.Pair("192.168.1.20").HubPort);
+    }
+
     private static Task<HostFixture> StartOwn(out HostFixture fx)
     {
         fx = new HostFixture();

@@ -2,7 +2,7 @@
 
 Bu klasör, projeye yeni başlayan birinin (insan ya da yapay zekâ) kodu baştan okumadan doğru yerden devam edebilmesi için yazıldı.
 Depoda üç parça var: **DeckPad** (`app/`), **StudioHub** (`studiohub/`), **OBS kurulum betiği** (`obs-script/`).
-Kardeş depo `MihrimatriX/camlink`: CamLink uygulaması ve CamLink OBS eklentisi. Webcam bu depoda yok (K-016).
+Başka bir depoya bağı yok (K-022); webcam yok (K-016).
 
 ## Okuma sırası
 
@@ -13,7 +13,7 @@ Kardeş depo `MihrimatriX/camlink`: CamLink uygulaması ve CamLink OBS eklentisi
 | 3 | [`progress.md`](progress.md) | Her oturumda; ne doğrulandı, ne doğrulanmadı, bilinen sorunlar |
 | 4 | [`systemPatterns.md`](systemPatterns.md) | Koda dokunmadan önce; dosya haritası, kalıplar, tarifler |
 | 5 | [`techContext.md`](techContext.md) | Derleme/test/ortam işlerinde; sürümler, komutlar, OBS ayar bilgisi |
-| 6 | [`suite-contracts.md`](suite-contracts.md) | Protokole, porta, QR'a, OBS adlarına dokunurken; **iki depoda aynı** |
+| 6 | [`contracts.md`](contracts.md) | Protokole, porta, QR'a, OBS adlarına dokunurken |
 | 7 | [`productContext.md`](productContext.md) | Arayüz ya da özellik kararı verirken; kullanıcı ve tasarım dili |
 | 8 | [`decisions.md`](decisions.md) | "Neden böyle?" sorusunda; bir kararı değiştirmeden önce mutlaka |
 | 9 | [`lessons.md`](lessons.md) | Hata ayıklarken; daha önce düşülen tuzaklar |
@@ -23,7 +23,7 @@ Kardeş depo `MihrimatriX/camlink`: CamLink uygulaması ve CamLink OBS eklentisi
 - **Her oturumun sonunda**: `activeContext.md` (durum, sıradaki adımlar, açık sorular) ve `progress.md` (doğrulanan/doğrulanmayan, sorunlar). Başlıktaki tarihi değiştir.
 - **Mimari ya da ürün kararı** verildiğinde `decisions.md`'ye yeni bir kayıt ekle. Eski kaydı silme; "Yerini aldı: K-0xx" diye işaretle.
 - **Sinsi bir hata** (bir saatten uzun süren, belirtisi nedeninden uzak) çözüldüğünde `lessons.md`'ye belirti → neden → çözüm olarak yaz.
-- **Ortak protokol** değiştiğinde `suite-contracts.md`'yi iki depoda birlikte güncelle ve iki tarafın kodunu aynı değişiklikte düzelt.
+- **Protokol** değiştiğinde `contracts.md`'yi güncelle ve iki tarafın (DeckPad, StudioHub) kodunu aynı değişiklikte düzelt.
 - Dosya taşındıysa `systemPatterns.md`'deki haritayı düzelt. Test sayısı değiştiyse `progress.md` ve `techContext.md`'yi düzelt.
 - Doğrulanmamış bir şeyi "çalışıyor" diye yazma. "Testte geçti", "gerçek OBS'te denendi", "gerçek cihazda denenmedi" gibi kanıt düzeyini belirt.
 

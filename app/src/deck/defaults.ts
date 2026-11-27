@@ -9,6 +9,7 @@ export function defaultProfile(): DeckProfile {
   const slidesId = newId();
   const pcId = newId();
   const homeId = newId();
+  const mixerId = newId();
 
   const home: DeckPage = {
     id: homeId,
@@ -48,6 +49,7 @@ export function defaultProfile(): DeckProfile {
         showState: false,
         actions: [{ type: 'notify', text: 'Merhaba!', seconds: 5 }],
       }),
+      btn({ label: 'Mikser', icon: 'options', color: '#0F7891', showState: false, actions: [{ type: 'page', pageId: mixerId }] }),
     ],
   };
 
@@ -70,6 +72,8 @@ export function defaultProfile(): DeckProfile {
         rows: 4,
         buttons: [back()],
       },
+      // OBS'teki ses kaynakları kaydırıcı olarak; tuş içermez.
+      { id: mixerId, name: 'Mikser', kind: 'mixer', cols: 3, rows: 4, buttons: [] },
       {
         id: slidesId,
         name: 'Slaytlar',

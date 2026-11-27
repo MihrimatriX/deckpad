@@ -1,4 +1,4 @@
-import { hubClient, type PcAction } from '../hub/client';
+import { hubClient, type HubState, type PcAction } from '../hub/client';
 import { obsClient, type BatchResult } from '../obs/client';
 import { filterKey, itemKey, useObs, type ObsState } from '../obs/store';
 import { isPcAction, OBS_NAMES, type DeckAction, type DeckButton } from './model';
@@ -298,6 +298,20 @@ export function buttonState(b: DeckButton, s: ObsState): ButtonState {
     default:
       return none;
   }
+}
+
+/**
+ * Bilgisayar tuşlarının canlı durumu (StudioHub'dan). Bilgisayar tuşu değilse null döner; o zaman OBS durumu geçerlidir.
+ * Ses tuşları Windows ses düzeyini gösterir: "%42", sessizdeyse "SESSİZ".
+ */
+export function pcButtonState(b: DeckButton, h: HubState): ButtonState | null {
+  const a = b.actions.find((x) => x.type !== 'delay');
+  if (!a || a.type !== 'pcVolume') return null;
+  if (b.showState === false || b.spacer || h.status !== 'connected' || !h.volume) return { active: false };
+  const { level, muted } = h.volume;
+  const muteKey = a.mode === 'toggleMute' || a.mode === 'mute' || a.mode === 'unmute';
+  if (muted) return muteKey ? { active: true, tone: 'live', sub: 'SESSİZ' } : { active: true, tone: 'warning', sub: 'SESSİZ' };
+  return muteKey ? { active: false } : { active: false, sub: `%${level}` };
 }
 
 /** Durumu OBS'ten okunması gereken bağlamaları toplar. */

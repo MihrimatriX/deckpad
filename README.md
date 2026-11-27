@@ -13,8 +13,7 @@ StudioHub açıksa aynı tuşlar bilgisayarda da iş görür: sunumu ilerletme, 
 
 ![DeckPad: ana sayfa, Bilgisayar sayfası, ses efektleri, tuş düzenleyici ve kısayol seçici](docs/screenshots/deckpad-telefon.png)
 
-Kardeş depo **[camlink](https://github.com/MihrimatriX/camlink)**: telefonu kablosuz kameraya çeviren uygulama ve CamLink OBS eklentisi.
-Bu depoda webcam yok; yalnızca telefondan OBS'i ve bilgisayarı yönetmek var.
+Amaç tek: telefondan OBS'i ve bilgisayarı yönetmek. Webcam ya da kamera aktarımı bu projenin konusu değil.
 
 ## Bu depoda
 
@@ -45,7 +44,7 @@ flowchart LR
 ```
 
 DeckPad OBS'e **doğrudan** bağlanır; StudioHub olmadan da tam çalışır. StudioHub yalnızca bilgisayar eylemleri ve bilgisayardaki paneller için gerekir.
-Portlar, QR biçimi ve WebSocket mesajları: [`memory-bank/suite-contracts.md`](memory-bank/suite-contracts.md).
+Portlar, QR biçimi ve WebSocket mesajları: [`memory-bank/contracts.md`](memory-bank/contracts.md).
 
 ## Kullanım
 
@@ -94,8 +93,8 @@ APK elle: `cd app && npx expo prebuild -p android && cd android && ./gradlew ass
 
 | | Doğrulandı | Henüz denenmedi |
 |---|---|---|
-| DeckPad | 25 test; APK Windows'ta derlenip telefona kuruldu; OBS paneli gerçek OBS 32.2.2'de tuşlarla çalıştı (bildirim) | Telefonda QR ile bağlanma, iOS |
-| StudioHub | 41 test; "OBS'i hazırla" dosyalarını gerçek OBS 30.0.2 okudu; Windows 11'de WPF kabuğu ve yönetim arayüzü açıldı | SendInput, Core Audio, PowerPoint, UAC; "OBS'i hazırla" OBS 32'de |
+| DeckPad | 34 test; APK Windows'ta derlenip telefona kuruldu; OBS paneli gerçek OBS 32.2.2'de tuşlarla çalıştı (bildirim) | Telefonda QR ile bağlanma, iOS |
+| StudioHub | 43 test; "OBS'i hazırla" dosyalarını gerçek OBS 30.0.2 okudu; Windows 11'de WPF kabuğu ve yönetim arayüzü açıldı | SendInput, Core Audio, PowerPoint, UAC; "OBS'i hazırla" OBS 32'de |
 | OBS betiği | Gerçek OBS 30.0.2'de tüm adımlar, tekrar çalıştırma, efekt ve slayt tuşları | OBS 31+ |
 
 Ayrıntı ve sıradaki adımlar: [`memory-bank/progress.md`](memory-bank/progress.md), [`memory-bank/activeContext.md`](memory-bank/activeContext.md).

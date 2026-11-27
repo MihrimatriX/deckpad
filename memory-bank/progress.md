@@ -1,6 +1,6 @@
 # İlerleme
 
-**Son güncelleme**: 2026-11-15
+**Son güncelleme**: 2026-11-26
 
 ## Sürüm geçmişi
 
@@ -12,7 +12,10 @@
 | webcam ayrımı (2026-10-26) | Webcam deckpad'den çıktı (K-016): FFmpeg, sanal kamera sürücüsü, CamLink eklentisi kopyası, SRT ayarları, UDP duyurusu, QR'daki `srt`/`webcam`, betikteki telefon kamerası. Betik `deckpad.lua`. `scripts/hazirla.*` yerine tek komut `scripts/kur.ps1` (K-017). |
 | bildirim (2026-10-27) | "Ekrana yazı göster" eylemi ve betiğin her sahneye eklediği boş `Bildirim` metni (K-018); ilk açılışta doğrudan QR kamerası, QR okununca bağlantı ekranı kapanır; `kur.ps1` Run anahtarı yazmaz, yalnız arm64 derler. |
 | v1.0.0 (2026-10-29) | Depo açık; Releases (`StudioHub.exe`, `DeckPad.apk`) ve GitHub Pages indirme sayfası (K-019). StudioHub tek dosya (içerik gömülü). Sade yönetim arayüzü (K-020); QR kırpılması ve OBS şifresi düzeltmeleri; release APK'da QR çözücü (R8) düzeltmesi. |
-| canlı otomatik sayfalar (2026-11-15, commit atılmadı) | Sahneler ve Ses efektleri sayfaları OBS'i izler (K-021): bağlıyken OBS'e eklenen sahne ya da efekt yeniden bağlanmadan tuş olur; doldurma geri alma geçmişine girmez. |
+| canlı otomatik sayfalar (2026-11-15) | Sahneler ve Ses efektleri sayfaları OBS'i izler (K-021): bağlıyken OBS'e eklenen sahne ya da efekt yeniden bağlanmadan tuş olur; doldurma geri alma geçmişine girmez. |
+| camlink ayrımı (2026-11-26) | camlink'le her bağ koptu (K-022): `contracts.md` yalnız bu depo; eski `deckpad-camlink.lua` taşıma kodu silindi. Davranış değişikliği yok. |
+| günlük pürüzler (2026-11-26) | Bilgisayar ses tuşları Windows düzeyini gösterir (`volume get`); dikey telefonda tuşlar uzar, durum ekranı iki satıra çıkar ve yayındaki sahneyi gösterir; tanınmayan QR'da ne yapılacağı yazar; QR dinlenen portu taşır. |
+| mikser (2026-11-26) | Mikser sayfası (K-023): OBS ses kaynakları için sustur + kaydırıcı + dB; varsayılan destede ve "Mikser ekle" ile. |
 
 ## Doğrulanan
 
@@ -31,6 +34,10 @@
 - 2026-11-15, canlı otomatik sayfalar (K-021): 26/26 test, tsc temiz. StudioHub'ın sunduğu yeni web paketi (`/`, mod'suz) Playwright'ta sahte OBS'e elle bağlandı: Sahneler (Başlıyoruz, Kamera, Oyun) ve Ses efektleri (Alkış) doldu, "Ses Efektleri" sahnesi atlandı; bağlıyken eklenen sahne (`SceneListChanged`) ve efekt (`InputCreated`) yeniden bağlanmadan tuş oldu, `autoScenesPageId`/`autoSfxPageId` kayıtlı profilde kaldı. **Gerçek OBS'te ve telefonda henüz görülmedi.**
   Aynı kodla release APK derlendi (arm64, 35,5 MB; `app/android` baştan, prebuild + gradle 15 dk 43 sn; `package.json` değişmedi). Telefona kurulmadı: adb `unauthorized`.
 - 2026-11-15, **gerçek OBS 33.0.1** (Windows) + StudioHub'ın WebView2 masaüstü paneli: panel OBS'e ve StudioHub'a bağlandı, Sahneler sayfası "Scene" ile doldu, deste `deck.json`'a yazıldı. WebSocket'ten `CreateScene` ile sahne eklenince OBS `SceneCreated` + `SceneListChanged` yolladı; panel 2,5 sn içinde tuşu ekleyip desteyi StudioHub'a gönderdi. `RemoveScene`'de de `SceneListChanged` geldi, tuş kaldı (K-021 sınırı). Deneme sahnesi ve tuşu geri alındı. **Telefonda henüz görülmedi; Ses efektleri sayfası gerçek OBS'te denenmedi.**
+
+- 2026-11-26, günlük pürüzler: 31/31 test, tsc temiz, `export:panel`. StudioHub DevServer + sahte OBS + Playwright (390×844 ve 1000×600): dikeyde tuşlar uzadı, durum ekranı "OBS · PC · Kamera" ve altında kayıt/yayın/CPU satırları; Bilgisayar sayfasında Ses −/+ "%40" gösterdi, Ses + ile %45, Sessiz'e basınca üç tuş "SESSİZ" oldu (DevServer günlüğünde `volume Get/Up/ToggleMute`). Tanınmayan QR uyarısı yalnız birim testte; **telefon kamerasında görülmedi**.
+
+- 2026-11-26, mikser: 34/34 test (düzeylerin okunması, `SetInputVolume` ve olayla güncelleme, fader eğrisi, sayfa türünün içe aktarmada korunması). DevServer + sahte OBS + Playwright: 390×844'te üç kanal, kaydırıcıyı fareyle %50'ye sürükleyince sahte OBS'te -18,1 dB oldu, mikrofonun sustur tuşu çalıştı; 1000×600'de iki sütun. **Gerçek OBS'te ve telefonda dokunmayla denenmedi.**
 
 **StudioHub**
 - xUnit testleri (40): KeyCombo, eşleştirme, eylem doğrulama, ayarlar, ini düzenleme, OBS yapılandırma (eski/yeni WebSocket), sunucu uçları, Host denetimi, WS kimlik doğrulama ve kilit, düzen paylaşımı.
@@ -70,12 +77,13 @@
 
 ## Bilinen sorunlar ve sınırlar
 
-- Dikey ekranda 4×4 ızgara ortada, üstte/altta boşluk fazla.
+- Dikey ekranda tuşlar en çok 1,4 kat uzar; az tuşlu sayfalarda üstte/altta yine boşluk kalır.
+- Windows ses düzeyi bilgisayarda (klavye, tepsi) değişirse telefon bunu ancak bir ses tuşuna basınca ya da uygulama öne gelince görür (StudioHub düzey değişimini yollamaz).
 - İki cihaz aynı anda otomatik sayfa doldurursa ya da düzenlerse son yazan kazanır; düzenleme modundayken uzaktan gelen değişiklik açık düzenlemeyi bozabilir.
 - Otomatik sayfada OBS'te silinen ya da adı değişen sahnenin tuşu kalır (elle silinir); OBS'te duran bir sahnenin silinen tuşu sonraki eşitlemede geri gelir (K-021).
 - Yönetici olarak çalışan pencerelere tuş gönderilemez (UIPI).
 - Güvenlik duvarı durumu netsh ile 2 dk önbellekli; ilk sorguda "yok" görünebilir.
-- Eski kurulumlarda `%ProgramFiles%\StudioHub\driver` ve `%ProgramData%\obs-studio\plugins\camlink` kalabilir (kullanıcının bilgisayarında eklenti var); StudioHub bunlara dokunmaz. "StudioHub (UDP)" kuralı Güvenlik duvarı › İzin ver'e basınca silinir.
+- Eski kurulumlarda `%ProgramFiles%\StudioHub\driver` ve `%ProgramData%\obs-studio\plugins\camlink` kalabilir (kullanıcının bilgisayarında eklenti var); StudioHub bunlara dokunmaz. Eski `deckpad-camlink.lua` kaydı artık taşınmaz (K-022): o adla kalmış bir betik varsa OBS › Araçlar › Betikler'den elle kaldırılır. "StudioHub (UDP)" kuralı Güvenlik duvarı › İzin ver'e basınca silinir.
 - APK'lar hata ayıklama anahtarıyla imzalı: başka makinede derlenen APK mevcut kurulumu güncelleyemez (önce kaldırmak gerekir).
 - Eski `kur.ps1` kurulumundan kalan `hub`, `panel`, `obs` klasörleri artık okunmuyor ama silinmiyor.
 - APK yalnız arm64-v8a; 32-bit ARM ve x86_64 emülatörde çalışmaz (`-PreactNativeArchitectures` ile değiştirilebilir).

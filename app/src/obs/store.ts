@@ -27,6 +27,8 @@ export interface ObsState {
   inputs: ObsInput[];
   specialInputs: Partial<Record<'mic1' | 'mic2' | 'desktop1' | 'desktop2', string>>;
   muted: Record<string, boolean>;
+  /** Ses kaynaklarının düzeyi (dB, OBS'te -100 = -∞). */
+  volumes: Record<string, number>;
   record: { active: boolean; paused: boolean; timecode?: string };
   stream: { active: boolean; timecode?: string; kbps?: number; dropped?: number };
   replayBuffer: { active: boolean; available: boolean };
@@ -47,6 +49,7 @@ export const initialObsState: ObsState = {
   inputs: [],
   specialInputs: {},
   muted: {},
+  volumes: {},
   record: { active: false, paused: false },
   stream: { active: false },
   replayBuffer: { active: false, available: false },

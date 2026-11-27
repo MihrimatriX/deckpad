@@ -59,14 +59,14 @@ Panel, OBS paneli ve eşitlemeyi açan telefonlar aynı `deck.json`'u kullanır.
 
 ### K-012 · OBS kurulumu Lua betiğiyle
 **Kaynak**: Kullanıcı (kurulum betiği istedi) + Teknik (dil) · **Durum**: geçerli
-Lua OBS'in içinde hazır; Python betikleri Windows'ta kullanıcının ayrıca Python kurmasını ve OBS'te yolunu ayarlamasını ister. Betiğin oluşturduğu adlar DeckPad varsayılanlarıyla sözleşmedir (`suite-contracts.md`).
+Lua OBS'in içinde hazır; Python betikleri Windows'ta kullanıcının ayrıca Python kurmasını ve OBS'te yolunu ayarlamasını ister. Betiğin oluşturduğu adlar DeckPad varsayılanlarıyla sözleşmedir (`contracts.md`).
 
 ### K-013 · Arayüz ve kod yorumları Türkçe
 **Kaynak**: Kullanıcı (Türkçe çalışıyor) · **Durum**: geçerli
 Kullanıcıya görünen her metin, BENİOKU'lar, hafıza bankası ve kod yorumları Türkçe. Tanımlayıcılar İngilizce.
 
 ### K-014 · GitHub düzeni: iki özel depo, lisans yok
-**Kaynak**: Kullanıcı (2026-10-24) · **Durum**: geçerli; StudioHub'ın CamLink'e hizmeti ve eklenti kopyası kısmının yerini K-016, deckpad'in özel olması kısmının yerini K-019 aldı
+**Kaynak**: Kullanıcı (2026-10-24) · **Durum**: StudioHub'ın CamLink'e hizmeti ve eklenti kopyası kısmının yerini K-016, deckpad'in özel olması kısmının yerini K-019, camlink'le ortak sözleşme kısmının yerini K-022 aldı; lisans kısmı geçerli
 - `MihrimatriX/deckpad`: DeckPad + StudioHub + OBS betiği. `MihrimatriX/camlink`: CamLink + CamLink OBS eklentisi.
 - StudioHub iki uygulamaya da hizmet ettiği hâlde DeckPad deposunda; çünkü DeckPad'in web derlemesini barındırıyor ve en çok onunla birlikte değişiyor. CamLink eklentisinin derlenmiş hali `studiohub/vendor/obs/obs-plugin`'de kopya olarak durur.
 - Lua betiği eklentinin değil DeckPad'in parçası sayıldı (sahne adları DeckPad varsayılanlarına bağlı).
@@ -117,3 +117,18 @@ Kullanıcıya görünen her metin, BENİOKU'lar, hafıza bankası ve kod yorumla
 - OBS kaynaklı değişiklik `applyRemote` ile yazılır: geri alma geçmişine girmez (eski tek seferlik doldurma `mutate` ile giriyordu).
 - **Seçenekler**: "ayna" (OBS'te silinenin tuşunu da kaldır). Sayfa temiz kalır ama yeniden adlandırma "sil + ekle" olduğundan özelleştirme kaybolur; veri kaybettirmeyen kural seçildi.
 - **Sınır**: OBS'te silinen ya da adı değişen sahnenin tuşu kalır (elle silinir, geri gelmez). Kullanıcının bilerek sildiği, OBS'te hâlâ duran sahnenin tuşu bir sonraki eşitlemede geri gelir; rahatsız ederse profile "görülen adlar" listesi eklenir. Alanları daha önce silinmiş eski profiller izlemez: "Varsayılan desteye dön" gerekir.
+
+### K-022 · camlink'le bağ koptu; deckpad tek başına bir yayın paneli
+**Kaynak**: Kullanıcı ("camlink ile olan olayı doğrudan kopart burdan. onunla bir işimiz yok benim amacım kullanımı kolay ve güçlü bir yayın paneli hazırlamak", 2026-11-26) · **Durum**: geçerli
+- deckpad başka bir depoyla sözleşme paylaşmaz. `suite-contracts.md` → `contracts.md`: yalnız DeckPad, StudioHub ve OBS betiği; CamLink'in portları (4467, 4468, 9000+, 9100, 9101), duyuru paketleri, kontrol protokolü, USB/SRT bölümleri çıktı. "İki depoda güncelle" kuralı kalktı.
+- Kodda camlink'e bağımlılık yoktu; yalnız `ObsConfigurator.AddScript`'teki eski `deckpad-camlink.lua` kaydını taşıma kodu ve testi silindi (kullanıcının bilgisayarı 2026-10-26'da taşınmıştı).
+- DeckPad eski QR'lardaki `srt`/`webcam` alanlarını yok saymayı sürdürür (zararsız, eski kodlar okunur).
+- Kullanıcının bilgisayarında kalan eski CamLink eklentisi ve "StudioHub (UDP)" kuralı StudioHub'ın işi değil; istenirse elle kaldırılır.
+
+### K-023 · Mikser ayrı bir sayfa türü; kaydırıcı kübik eğriyle dB yazar
+**Kaynak**: Kullanıcı ("kullanımı kolay ve güçlü bir yayın paneli", 2026-11-26; plan 3. adım) + Teknik (yöntem) · **Durum**: geçerli
+- `DeckPage.kind = 'mixer'`: tuş ızgarası yerine OBS'te sesi olan her kaynak için sustur tuşu + yatay kaydırıcı + dB. Liste OBS'ten canlı gelir (sustur durumu okunabilen kaynaklar); genel aygıtlar (masaüstü, mikrofon) başta, "Ses Efektleri" sahnesindeki klipler gizli.
+- Kaydırıcı konumu p → dB = 60·log10(p) (kübik çarpan): orta nokta ≈ -18 dB, kulağa doğal; 0 dB'de biter (OBS +26'ya kadar izin verir, o kısım OBS'in gelişmiş ses ayarlarında kalır). p=0 → -100 (OBS'te -∞).
+- Sürüklerken en çok 60 ms'de bir `SetInputVolume`; bırakınca son değer. OBS `InputVolumeChanged` ile doğrular, ekran OBS'in değerine döner.
+- **Seçenekler**: tuş olarak "ses ±" (zaten var, ince ayara uygun değil); dikey fader şeritleri (OBS'e benzer ama telefonda dikey ekranda dar kalır). Kaynak başına VU ölçer (`InputVolumeMeters` olayı, saniyede ~20 ileti) bant genişliği ve pil yüzünden şimdilik yok.
+- Varsayılan destede "Mikser" sayfası ve Ana sayfada ona giden tuş var. Eski destelere düzenleme modunda "Mikser ekle" ile eklenir (desteyi sıfırlamadan).

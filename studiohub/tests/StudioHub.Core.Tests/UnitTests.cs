@@ -81,6 +81,15 @@ public class DispatcherTests
     }
 
     [Fact]
+    public async Task VolumeGetChangesNothing()
+    {
+        await D.RunAsync(new PcAction { Op = "volume", Mode = "set", Value = 42 });
+        var r = await D.RunAsync(new PcAction { Op = "volume", Mode = "get", Value = 99 });
+        Assert.True(r.Ok);
+        Assert.Equal("%42", r.Message);
+    }
+
+    [Fact]
     public async Task ReportsBadInput()
     {
         Assert.Equal("Bilinmeyen eylem: rm", (await D.RunAsync(new PcAction { Op = "rm" })).Message);
@@ -236,20 +245,19 @@ public class ObsConfiguratorTests
     }
 
     [Fact]
-    public void Obs32CollectionAndOldScriptName()
+    public void Obs32CollectionWithExtension()
     {
         var o = Make();
-        // OBS 32 koleksiyon adını uzantısıyla yazar; webcam'li sürüm betiği eski adla eklemiş olabilir.
+        // OBS 32 koleksiyon adını uzantısıyla yazar.
         var ini = Path.Combine(o.ConfigDir, "user.ini");
         File.WriteAllText(ini, File.ReadAllText(ini).Replace("SceneCollectionFile=Sahnelerim", "SceneCollectionFile=Sahnelerim.json"));
         var collection = Path.Combine(o.ConfigDir, "basic", "scenes", "Sahnelerim.json");
-        File.WriteAllText(collection, """{"name":"Sahnelerim","modules":{"scripts-tool":[{"path":"C:/eski/deckpad-camlink.lua","settings":{"sfx_dir":"C:/Sesler"}}]}}""");
+        File.WriteAllText(collection, """{"name":"Sahnelerim","modules":{"scripts-tool":[]}}""");
         var script = Path.Combine(_root, "deckpad.lua");
         File.WriteAllText(script, "-- test");
         Assert.True(o.AddScript(script).Ok);
         var json = File.ReadAllText(collection);
-        Assert.DoesNotContain("deckpad-camlink.lua", json);
-        Assert.Contains("C:/Sesler", json);
+        Assert.Contains("deckpad.lua", json);
         Assert.NotNull(o.ScriptPathInCollection());
         Assert.Equal("Sahnelerim", o.CurrentSceneCollectionFile());
     }

@@ -5,9 +5,10 @@ import { Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 
 import Animated, { useAnimatedRef } from 'react-native-reanimated';
 import Sortable, { type SortableGridRenderItem } from 'react-native-sortables';
 import { buttonIncomplete } from '../deck/actions';
+import { fitGrid, GAP } from '../deck/layout';
 import type { DeckButton, DeckPage } from '../deck/model';
 import { isPcAction } from '../deck/model';
-import { buttonState, runButton } from '../deck/run';
+import { buttonState, pcButtonState, runButton } from '../deck/run';
 import { useHub } from '../hub/client';
 import { useDeck } from '../deck/store';
 import { useObs } from '../obs/store';
@@ -17,7 +18,6 @@ import { DeckButtonView } from './DeckButtonView';
 import { toast } from './ui';
 import { navy } from '../theme';
 
-const GAP = 12;
 /** Tuşları çevreleyen ön panelin iç boşluğu. */
 const FP = 12;
 
@@ -30,9 +30,9 @@ export function DeckGrid({ page, onEditButton }: { page: DeckPage; onEditButton:
     if (Math.abs(width - box.w) > 1 || Math.abs(height - box.h) > 1) setBox({ w: width, h: height });
   };
 
-  // Dikeyde kullanıcının ayarladığı sütun/satır kullanılır.
+  // Dikeyde kullanıcının ayarladığı sütun/satır kullanılır; boş kalan yükseklik tuşları uzatır.
   // Yatayda butonlar, ekrana en büyük sığacak sütun sayısıyla yeniden dizilir.
-  const { size, cols } = useMemo(
+  const { size, height, cols } = useMemo(
     () => fitGrid(box.w - FP * 2 - 2, box.h - FP * 2 - 10, page.cols, page.rows, page.buttons.length),
     [box, page.cols, page.rows, page.buttons.length],
   );
@@ -44,37 +44,24 @@ export function DeckGrid({ page, onEditButton }: { page: DeckPage; onEditButton:
     <View style={styles.fill} onLayout={onLayout}>
       {size > 0 ? (
         editing ? (
-          <EditGrid page={layoutPage} size={size} width={gridWidth} onEditButton={onEditButton} />
+          <EditGrid page={layoutPage} size={size} height={height} width={gridWidth} onEditButton={onEditButton} />
         ) : (
-          <PlayGrid page={layoutPage} size={size} width={gridWidth} />
+          <PlayGrid page={layoutPage} size={size} height={height} width={gridWidth} />
         )
       ) : null}
     </View>
   );
 }
 
-export function fitGrid(w: number, h: number, pageCols: number, pageRows: number, count: number) {
-  if (!w || !h) return { size: 0, cols: pageCols };
-  const sizeFor = (c: number, r: number) => Math.floor(Math.min((w - (c - 1) * GAP) / c, (h - (r - 1) * GAP) / r));
-  const portraitSize = sizeFor(pageCols, pageRows);
-  if (w <= h * 1.15 || count === 0) return { size: Math.max(40, portraitSize), cols: pageCols };
-  let best = { size: portraitSize, cols: pageCols };
-  for (let c = pageCols; c <= Math.max(pageCols, count); c++) {
-    const sz = sizeFor(c, Math.max(1, Math.ceil(count / c)));
-    if (sz > best.size) best = { size: sz, cols: c };
-  }
-  return { size: Math.max(40, best.size), cols: best.cols };
-}
-
 // ---------- Normal mod: basınca çalışır ----------
 
-function PlayGrid({ page, size, width }: { page: DeckPage; size: number; width: number }) {
+function PlayGrid({ page, size, height, width }: { page: DeckPage; size: number; height: number; width: number }) {
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Faceplate>
         <View style={[styles.wrap, { width }]}>
           {page.buttons.map((b) => (
-            <PlayButton key={b.id} button={b} size={size} />
+            <PlayButton key={b.id} button={b} size={size} height={height} />
           ))}
         </View>
       </Faceplate>
@@ -82,8 +69,10 @@ function PlayGrid({ page, size, width }: { page: DeckPage; size: number; width: 
   );
 }
 
-function PlayButton({ button, size }: { button: DeckButton; size: number }) {
-  const state = useObs(useShallow((s) => buttonState(button, s)));
+function PlayButton({ button, size, height }: { button: DeckButton; size: number; height: number }) {
+  const obsState = useObs(useShallow((s) => buttonState(button, s)));
+  const pcState = useHub(useShallow((h) => pcButtonState(button, h)));
+  const state = pcState ?? obsState;
   const connected = useObs((s) => s.status === 'connected');
   const pcConnected = useHub((s) => s.status === 'connected');
   const haptics = useSettings((s) => s.haptics);
@@ -116,7 +105,7 @@ function PlayButton({ button, size }: { button: DeckButton; size: number }) {
     }
   }, [button, busy, connected, pcConnected, haptics, setPage]);
 
-  if (button.spacer) return <DeckButtonView button={button} size={size} state={state} />;
+  if (button.spacer) return <DeckButtonView button={button} size={size} height={height} state={state} />;
 
   return (
     <Pressable
@@ -138,6 +127,7 @@ function PlayButton({ button, size }: { button: DeckButton; size: number }) {
         <DeckButtonView
           button={button}
           size={size}
+          height={height}
           state={state}
           pressed={pressed || busy}
           incomplete={buttonIncomplete(button)}
@@ -152,11 +142,13 @@ function PlayButton({ button, size }: { button: DeckButton; size: number }) {
 function EditGrid({
   page,
   size,
+  height,
   width,
   onEditButton,
 }: {
   page: DeckPage;
   size: number;
+  height: number;
   width: number;
   onEditButton: (b: DeckButton) => void;
 }) {
@@ -166,11 +158,11 @@ function EditGrid({
 
   const renderItem = useCallback<SortableGridRenderItem<DeckButton>>(
     ({ item }) => (
-      <Sortable.Touchable onTap={() => onEditButton(item)} style={{ width: size, height: size }}>
-        <DeckButtonView button={item} size={size} state={{ active: false }} editing incomplete={buttonIncomplete(item)} />
+      <Sortable.Touchable onTap={() => onEditButton(item)} style={{ width: size, height }}>
+        <DeckButtonView button={item} size={size} height={height} state={{ active: false }} editing incomplete={buttonIncomplete(item)} />
       </Sortable.Touchable>
     ),
-    [size, onEditButton],
+    [size, height, onEditButton],
   );
 
   return (
@@ -178,7 +170,7 @@ function EditGrid({
       <Faceplate>
       <View style={{ width }}>
         <Sortable.Grid
-          key={`${page.id}-${page.cols}-${size}`}
+          key={`${page.id}-${page.cols}-${size}-${height}`}
           data={page.buttons}
           columns={page.cols}
           rowGap={GAP}

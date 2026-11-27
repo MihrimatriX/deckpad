@@ -12,7 +12,7 @@ export interface MockState {
   previewScene: string;
   studioMode: boolean;
   scenes: string[]; // OBS arayüzündeki sıra (üstten alta)
-  inputs: { name: string; kind: string; audio: boolean; muted: boolean; media?: string }[];
+  inputs: { name: string; kind: string; audio: boolean; muted: boolean; media?: string; db?: number }[];
   special: Record<string, string | null>;
   record: { active: boolean; paused: boolean };
   stream: { active: boolean; bytes: number };
@@ -175,6 +175,19 @@ export class MockObs {
         if (!i) return this.fail('No source was found', 600);
         if (!i.audio) return this.fail('The specified input does not support audio.', 604);
         return this.ok({ inputMuted: i.muted });
+      }
+      case 'GetInputVolume': {
+        const i = this.input(d.inputName);
+        if (!i?.audio) return this.fail('The specified input does not support audio.', 604);
+        const db = i.db ?? 0;
+        return this.ok({ inputVolumeDb: db, inputVolumeMul: Math.pow(10, db / 20) });
+      }
+      case 'SetInputVolume': {
+        const i = this.input(d.inputName);
+        if (!i?.audio) return this.fail('The specified input does not support audio.', 604);
+        i.db = typeof d.inputVolumeDb === 'number' ? d.inputVolumeDb : 20 * Math.log10(Math.max(1e-5, d.inputVolumeMul));
+        this.emit('InputVolumeChanged', { inputName: i.name, inputVolumeDb: i.db, inputVolumeMul: Math.pow(10, i.db / 20) });
+        return this.ok();
       }
       case 'GetStats':
         return this.ok({ cpuUsage: 12.4, activeFps: 60, renderSkippedFrames: 0, renderTotalFrames: 1000, outputSkippedFrames: 0, outputTotalFrames: 1000 });

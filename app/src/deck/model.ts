@@ -52,6 +52,8 @@ export interface DeckButton {
 export interface DeckPage {
   id: string;
   name: string;
+  /** "mixer": tuş yerine OBS'teki ses kaynaklarının kaydırıcıları gösterilir (tuş listesi boş kalır). */
+  kind?: 'mixer';
   cols: number;
   rows: number;
   buttons: DeckButton[];

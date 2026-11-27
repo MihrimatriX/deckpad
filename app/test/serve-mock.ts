@@ -13,5 +13,9 @@ obs.recordStartedAt = Date.now() - (12 * 60 + 47) * 1000;
 s.stream.active = true;
 obs.streamStartedAt = Date.now() - (34 * 60 + 5) * 1000;
 s.inputs[0].muted = true;
+// Mikser sayfası için gerçekçi düzeyler.
+s.inputs[0].db = -4.5;
+s.inputs[1].db = -12;
+s.inputs[2].db = -20;
 s.items.Kamera[1].enabled = true;
 console.log(`Sahte OBS ws://127.0.0.1:${port} üzerinde ${password ? 'şifreli' : 'şifresiz'} çalışıyor`);

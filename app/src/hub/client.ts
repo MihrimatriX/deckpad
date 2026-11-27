@@ -7,7 +7,8 @@ export type PcAction =
   | { op: 'launch'; path: string; args?: string }
   | { op: 'url'; url: string }
   | { op: 'media'; key: 'playPause' | 'next' | 'previous' | 'stop' }
-  | { op: 'volume'; mode: 'up' | 'down' | 'set' | 'mute' | 'unmute' | 'toggleMute'; value?: number }
+  // get: hiçbir şeyi değiştirmeden düzeyi okur (eski StudioHub'lar tanımaz, hata döner).
+  | { op: 'volume'; mode: 'get' | 'up' | 'down' | 'set' | 'mute' | 'unmute' | 'toggleMute'; value?: number }
   | { op: 'slide'; dir: 'next' | 'previous' | 'first' | 'last' | 'start' | 'end' | 'black' };
 
 export interface PcResult {
@@ -84,15 +85,27 @@ export class HubClient {
       } catch {}
     }
     this.failAll('Bağlantı kapandı');
-    if (reset) useHub.setState({ status: 'off', error: undefined, pcName: undefined });
+    if (reset) useHub.setState({ status: 'off', error: undefined, pcName: undefined, volume: undefined });
   }
 
-  /** Uygulama öne gelince beklemeden yeniden dener. */
+  /** Uygulama öne gelince beklemeden yeniden dener; bağlıysa ses düzeyini tazeler (bilgisayarda değişmiş olabilir). */
   nudge() {
-    if (this.running && useHub.getState().status !== 'connected' && useHub.getState().status !== 'connecting') {
+    const status = useHub.getState().status;
+    if (status === 'connected') {
+      void this.refreshVolume();
+      return;
+    }
+    if (this.running && status !== 'connecting') {
       clearTimeout(this.retryTimer);
       this.open();
     }
+  }
+
+  /** Windows ses düzeyini okur; ses tuşları bunu gösterir. Okunamazsa sessizce vazgeçer. */
+  async refreshVolume() {
+    try {
+      await this.run({ op: 'volume', mode: 'get' });
+    } catch {}
   }
 
   onDeckChanged(fn: () => void) {
@@ -132,6 +145,7 @@ export class HubClient {
         this.retry = 0;
         this.clientId = msg.clientId;
         useHub.setState({ status: 'connected', error: undefined, pcName: msg.name });
+        void this.refreshVolume();
         return;
       }
       if (msg.t === 'error' && msg.code === 'auth') {

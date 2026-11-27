@@ -1,6 +1,6 @@
 # StudioHub (studiohub/)
 
-DeckPad'in Windows yardımcısı: .NET 10 Core (Kestrel, platformdan bağımsız) + WPF/WebView2 kabuğu + HTML yönetim arayüzü. Webcam yok (camlink deposunda).
+DeckPad'in Windows yardımcısı: .NET 10 Core (Kestrel, platformdan bağımsız) + WPF/WebView2 kabuğu + HTML yönetim arayüzü. Webcam yok.
 Mimari ve tarifler: `../memory-bank/systemPatterns.md` › StudioHub.
 
 - Windows'a özgü kod yalnız `src/StudioHub/Platform` içinde, `IHubPlatform` / `IPcPlatform` arkasında. Core platformdan bağımsız kalmalı.

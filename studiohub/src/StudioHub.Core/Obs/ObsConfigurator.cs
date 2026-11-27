@@ -260,14 +260,10 @@ public sealed class ObsConfigurator
             root["modules"] = modules;
             var scripts = modules["scripts-tool"] as JsonArray ?? [];
             modules["scripts-tool"] = scripts;
-            // Webcam'li sürümün betiği (deckpad-camlink.lua) çıkarılır; ayarları yeni betiğe geçer.
-            var old = scripts.OfType<JsonObject>()
-                .Where(s => s["path"]?.GetValue<string>()?.EndsWith("deckpad-camlink.lua", StringComparison.OrdinalIgnoreCase) == true).ToList();
-            foreach (var s in old) scripts.Remove(s);
             // OBS yollarda ileri eğik çizgi kullanır.
             var obsPath = target.Replace('\\', '/');
             if (!scripts.OfType<JsonObject>().Any(s => string.Equals(s["path"]?.GetValue<string>(), obsPath, StringComparison.OrdinalIgnoreCase)))
-                scripts.Add(new JsonObject { ["path"] = obsPath, ["settings"] = old.FirstOrDefault()?["settings"]?.DeepClone() ?? new JsonObject() });
+                scripts.Add(new JsonObject { ["path"] = obsPath, ["settings"] = new JsonObject() });
             File.Copy(collection, collection + ".deckpad-yedek", overwrite: true);
             File.WriteAllText(collection, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
             return new SetupStep(id, title, true, $"\"{CurrentSceneCollectionFile()}\" koleksiyonuna eklendi");

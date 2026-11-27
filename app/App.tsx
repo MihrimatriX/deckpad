@@ -16,8 +16,9 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ButtonEditor } from './src/components/ButtonEditor';
 import { PageTabs, TopBar } from './src/components/Chrome';
 import { DeckGrid } from './src/components/DeckGrid';
+import { MixerView } from './src/components/Mixer';
 import { ConnectSheet, PageSheet, SettingsSheet } from './src/components/Sheets';
-import { ToastHost } from './src/components/ui';
+import { toast, ToastHost } from './src/components/ui';
 import { sceneButtons, sceneOf, sfxButtons, sfxOf } from './src/deck/defaults';
 import { newId, OBS_NAMES, type DeckButton } from './src/deck/model';
 import { collectBindings } from './src/deck/run';
@@ -88,6 +89,7 @@ function Main() {
   const keepAwake = useSettings((s) => s.keepAwake);
   const profile = useDeck((s) => s.profile);
   const pageId = useDeck((s) => s.pageId);
+  const deckEditing = useDeck((s) => s.editing);
   const status = useObs((s) => s.status);
   const scenes = useObs((s) => s.scenes);
   const inputs = useObs((s) => s.inputs);
@@ -191,13 +193,17 @@ function Main() {
         onSettings={() => setSheet('settings')}
         onPageSettings={() => setSheet('page')}
         onAddButton={() =>
-          setEditing({
-            isNew: true,
-            button: { id: newId(), label: '', color: '#1B2D55', actions: [] },
-          })
+          page?.kind === 'mixer'
+            ? toast('Mikser sayfasına tuş eklenmez. Tuş eklemek için başka bir sayfaya geç.')
+            : setEditing({
+                isNew: true,
+                button: { id: newId(), label: '', color: '#1B2D55', actions: [] },
+              })
         }
       />
-      <View style={styles.gridArea}>{page ? <DeckGrid page={page} onEditButton={onEditButton} /> : null}</View>
+      <View style={styles.gridArea}>
+        {page?.kind === 'mixer' ? <MixerView editing={deckEditing} /> : page ? <DeckGrid page={page} onEditButton={onEditButton} /> : null}
+      </View>
       <PageTabs />
 
       <ConnectSheet visible={sheet === 'connect'} onClose={() => setSheet(null)} />
