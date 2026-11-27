@@ -54,6 +54,8 @@ export interface DeckPage {
   name: string;
   /** "mixer": tuş yerine OBS'teki ses kaynaklarının kaydırıcıları gösterilir (tuş listesi boş kalır). */
   kind?: 'mixer';
+  /** Tuşların üstünde (yatayda yanında) OBS'in canlı yayın görüntüsü. Belirtilmezse yalnız "Sahneler" sayfasında açık. */
+  preview?: boolean;
   cols: number;
   rows: number;
   buttons: DeckButton[];
@@ -70,6 +72,10 @@ export interface DeckProfile {
 }
 
 export const isPcAction = (a: DeckAction) => a.type.startsWith('pc');
+
+/** Sayfada canlı önizleme gösterilir mi: açıkça seçilmediyse OBS sahnelerini izleyen sayfada açık. */
+export const pageShowsPreview = (page: DeckPage, profile: Pick<DeckProfile, 'autoScenesPageId'>) =>
+  page.kind !== 'mixer' && (page.preview ?? page.id === profile.autoScenesPageId);
 
 /** OBS kurulum betiğinin oluşturduğu adlar; DeckPad varsayılanları bunlarla eşleşir. */
 export const OBS_NAMES = {

@@ -6,10 +6,11 @@ import { obsClient } from '../src/obs/client';
 import { useObs } from '../src/obs/store';
 import { parseObsQr } from '../src/obs/qr';
 import { buttonState, runButton } from '../src/deck/run';
-import type { DeckButton } from '../src/deck/model';
+import { pageShowsPreview, type DeckButton } from '../src/deck/model';
 import { syncAutoButtons, validateProfile } from '../src/deck/ops';
 import { defaultProfile, sceneButtons, sceneOf } from '../src/deck/defaults';
 import { MockObs } from './mock-obs';
+import { meterPos, nextMeter, useMeters } from '../src/obs/meters';
 import { dbToPos, formatDb, mixerChannels, posToDb } from '../src/deck/mixer';
 
 const PORT = 45455;
@@ -117,6 +118,44 @@ describe('DeckPad ↔ OBS', () => {
       ['Desktop Audio', 'Mic/Aux'],
       'genel aygıtlar başta, ses efekti gizli',
     );
+  });
+
+  test('ses ölçerleri: yalnız istenince abone olur, olaylar depoya düşer', async () => {
+    assert.equal(obs.metersSubscribed, false, 'başta ölçer aboneliği yok');
+    await obsClient.setMeters(true);
+    await waitFor(() => obs.metersSubscribed);
+    obs.emitMeters([{ inputName: 'Mic/Aux', inputLevelsMul: [[0.1, 0.5, 0.1], [0.05, 0.2, 0.05]] }]);
+    await waitFor(() => !!useMeters.getState().levels['Mic/Aux']);
+    const [l, r] = useMeters.getState().levels['Mic/Aux'];
+    assert.ok(Math.abs(l.level - -20) < 0.01, 'çarpan 0.1 → -20 dB');
+    assert.ok(Math.abs(l.hold - 20 * Math.log10(0.5)) < 0.01, 'tepe göstergesi');
+    assert.ok(r.level < l.level);
+    await obsClient.setMeters(false);
+    await waitFor(() => !obs.metersSubscribed);
+    assert.deepEqual(useMeters.getState().levels, {}, 'kapanınca ölçerler temizlenir');
+  });
+
+  test('sahne görüntüleri tek batch\'te gelir, olmayan sahne atlanır', async () => {
+    const got = await obsClient.screenshots(['Kamera', 'Oyun', 'Yok böyle sahne'], 192);
+    assert.deepEqual(Object.keys(got).sort(), ['Kamera', 'Oyun']);
+    assert.match(got.Kamera, /^data:image\/(png|jpeg);base64,/);
+  });
+
+  test('stüdyo modu: açılınca önizleme okunur, geçiş önizlemeyi yayına alır', async () => {
+    const program = obs.state.programScene;
+    obs.state.previewScene = obs.state.scenes.find((x) => x !== program)!;
+    const preview = obs.state.previewScene;
+    try {
+      await obsClient.call('SetStudioModeEnabled', { studioModeEnabled: true });
+      await waitFor(() => useObs.getState().studioMode && useObs.getState().previewScene === preview);
+      await obsClient.call('TriggerStudioModeTransition');
+      await waitFor(() => useObs.getState().programScene === preview && useObs.getState().previewScene === program);
+    } finally {
+      await obsClient.call('SetStudioModeEnabled', { studioModeEnabled: false });
+      await waitFor(() => !useObs.getState().studioMode);
+      await obsClient.call('SetCurrentProgramScene', { sceneName: program });
+      await waitFor(() => useObs.getState().programScene === program);
+    }
   });
 
   test('kaynak göster/gizle: mevcut durumu okuyup tersine çevirir', async () => {
@@ -257,4 +296,32 @@ test('mikser sayfası: varsayılan destede var, içe aktarmada türü korunur', 
   assert.equal(round.pages.find((pg) => pg.id === mixer!.id)?.kind, 'mixer');
   const bogus = validateProfile({ pages: [{ id: 'x', name: 'X', kind: 'tuhaf', buttons: [] }] });
   assert.equal(bogus.pages[0].kind, undefined);
+});
+
+test('canlı önizleme: yalnız Sahneler sayfasında kendiliğinden açık, seçim içe aktarmada korunur', () => {
+  const p = defaultProfile();
+  const scenes = p.pages.find((pg) => pg.id === p.autoScenesPageId)!;
+  const home = p.pages[0];
+  const mixer = p.pages.find((pg) => pg.kind === 'mixer')!;
+  assert.equal(pageShowsPreview(scenes, p), true);
+  assert.equal(pageShowsPreview(home, p), home.id === p.autoScenesPageId);
+  assert.equal(pageShowsPreview({ ...mixer, preview: true }, p), false, 'mikserde önizleme yok');
+  const edited = { ...p, pages: p.pages.map((pg) => (pg.id === scenes.id ? { ...pg, preview: false } : pg.id === home.id ? { ...pg, preview: true } : pg)) };
+  const round = validateProfile(JSON.parse(JSON.stringify(edited)));
+  assert.equal(pageShowsPreview(round.pages.find((pg) => pg.id === scenes.id)!, round), false);
+  assert.equal(pageShowsPreview(round.pages.find((pg) => pg.id === home.id)!, round), true);
+  assert.equal(validateProfile({ pages: [{ id: 'x', preview: 'evet', buttons: [] }] }).pages[0].preview, undefined);
+});
+
+test('ölçer: tepe göstergesi yavaş düşer, çubuk -60 dB ile 0 arası', () => {
+  const a = nextMeter(undefined, [[0.5, 1, 0.5]], 0);
+  assert.equal(a[0].hold, 0);
+  const b = nextMeter(a, [[0.001, 0.001, 0.001]], 500);
+  assert.equal(b[0].level, -60);
+  assert.ok(Math.abs(b[0].hold - -10) < 1e-9, 'yarım saniyede 10 dB düşer');
+  assert.equal(nextMeter(b, [[0, 0, 0]], 10000)[0].hold, -60);
+  assert.equal(meterPos(-60), 0);
+  assert.equal(meterPos(0), 1);
+  assert.equal(meterPos(-30), 0.5);
+  assert.equal(nextMeter(undefined, [[0.1, 0.1], [0.1, 0.1], [0.1, 0.1]], 0).length, 2, 'en çok iki kanal');
 });

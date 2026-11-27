@@ -1,11 +1,60 @@
 // obs-websocket v5 protokolünü taklit eden küçük sunucu. Gerçek OBS olmadan istemciyi test etmek için.
 import { createHash, randomBytes } from 'node:crypto';
+import { crc32, deflateSync } from 'node:zlib';
 import WebSocket from 'ws';
 
 // ws 7 ve 8 farklı dışa aktarım kullanıyor; ikisini de destekle.
 const WebSocketServer: any = (WebSocket as any).Server ?? (WebSocket as any).WebSocketServer;
 
 const b64sha = (s: string) => createHash('sha256').update(s).digest('base64');
+
+/** InputVolumeMeters olay aboneliği biti (obs-websocket EventSubscription.InputVolumeMeters). */
+export const METERS_BIT = 1 << 16;
+
+/** Sahne "ekran görüntüsü": ada göre renklenmiş, yukarıdan aşağı koyulaşan küçük bir PNG (data URI). */
+export function scenePng(name: string, width = 160, height = 90): string {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.codePointAt(0)!) >>> 0;
+  const hue = (h * 47) % 360;
+  const rgb = (l: number) => {
+    // HSL → RGB, doygunluk 0.55
+    const s = 0.55, c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((hue / 60) % 2) - 1)), m = l - c / 2;
+    const [r, g, b] = hue < 60 ? [c, x, 0] : hue < 120 ? [x, c, 0] : hue < 180 ? [0, c, x] : hue < 240 ? [0, x, c] : hue < 300 ? [x, 0, c] : [c, 0, x];
+    return [r + m, g + m, b + m].map((v) => Math.round(v * 255));
+  };
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const [r, g, b] = rgb(0.55 - (0.35 * y) / height);
+    const row = y * (width * 3 + 1);
+    for (let x = 0; x < width; x++) {
+      // Ortada açık bir "pencere": görüntüye derinlik verir.
+      const inner = x > width * 0.3 && x < width * 0.7 && y > height * 0.25 && y < height * 0.75;
+      raw[row + 1 + x * 3] = inner ? Math.min(255, r + 60) : r;
+      raw[row + 2 + x * 3] = inner ? Math.min(255, g + 60) : g;
+      raw[row + 3 + x * 3] = inner ? Math.min(255, b + 60) : b;
+    }
+  }
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(td) >>> 0);
+    return Buffer.concat([len, td, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  const png = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+  return 'data:image/png;base64,' + png.toString('base64');
+}
 
 export interface MockState {
   programScene: string;
@@ -66,6 +115,8 @@ export class MockObs {
   recordStartedAt = Date.now();
   streamStartedAt = Date.now();
   private clients = new Set<WebSocket>();
+  /** İstemcinin abone olduğu olay bitleri (Identify / Reidentify). */
+  subs = new Map<WebSocket, number>();
 
   constructor(
     public port: number,
@@ -105,11 +156,20 @@ export class MockObs {
         }
         identified = true;
         this.clients.add(ws);
-        ws.on('close', () => this.clients.delete(ws));
+        this.subs.set(ws, msg.d.eventSubscriptions ?? 0x7ff);
+        ws.on('close', () => {
+          this.clients.delete(ws);
+          this.subs.delete(ws);
+        });
         ws.send(JSON.stringify({ op: 2, d: { negotiatedRpcVersion: 1 } }));
         return;
       }
       if (!identified) return ws.close(4007, 'Not identified');
+      if (msg.op === 3) {
+        this.subs.set(ws, msg.d.eventSubscriptions ?? 0x7ff);
+        ws.send(JSON.stringify({ op: 2, d: { negotiatedRpcVersion: 1 } }));
+        return;
+      }
       if (msg.op === 6) {
         const r = await this.handle(msg.d.requestType, msg.d.requestData ?? {});
         ws.send(JSON.stringify({ op: 7, d: { requestType: msg.d.requestType, requestId: msg.d.requestId, ...r } }));
@@ -123,6 +183,18 @@ export class MockObs {
         ws.send(JSON.stringify({ op: 9, d: { requestId: msg.d.requestId, results } }));
       }
     });
+  }
+
+  /** Ölçer olayı yalnız InputVolumeMeters'a abone istemcilere gider (gerçek OBS gibi). */
+  emitMeters(inputs: { inputName: string; inputLevelsMul: number[][] }[]) {
+    for (const c of this.clients) {
+      if ((this.subs.get(c) ?? 0) & METERS_BIT) c.send(JSON.stringify({ op: 5, d: { eventType: 'InputVolumeMeters', eventIntent: METERS_BIT, eventData: { inputs } } }));
+    }
+  }
+
+  /** Şu an ölçere abone istemci var mı. */
+  get metersSubscribed() {
+    return [...this.subs.values()].some((v) => (v & METERS_BIT) !== 0);
   }
 
   emit(eventType: string, eventData: any) {
@@ -188,6 +260,12 @@ export class MockObs {
         i.db = typeof d.inputVolumeDb === 'number' ? d.inputVolumeDb : 20 * Math.log10(Math.max(1e-5, d.inputVolumeMul));
         this.emit('InputVolumeChanged', { inputName: i.name, inputVolumeDb: i.db, inputVolumeMul: Math.pow(10, i.db / 20) });
         return this.ok();
+      }
+      case 'GetSourceScreenshot': {
+        const known = s.scenes.includes(d.sourceName) || s.inputs.some((i) => i.name === d.sourceName);
+        if (!known) return this.fail('No source was found by the name of `' + d.sourceName + '`.', 600);
+        const w = Math.max(8, Math.min(640, d.imageWidth ?? 160));
+        return this.ok({ imageData: scenePng(d.sourceName, w, Math.round((w * 9) / 16)) });
       }
       case 'GetStats':
         return this.ok({ cpuUsage: 12.4, activeFps: 60, renderSkippedFrames: 0, renderTotalFrames: 1000, outputSkippedFrames: 0, outputTotalFrames: 1000 });
@@ -265,6 +343,25 @@ export class MockObs {
         s.studioMode = d.studioModeEnabled;
         this.emit('StudioModeStateChanged', { studioModeEnabled: s.studioMode });
         return this.ok();
+      case 'GetCurrentPreviewScene':
+        if (!s.studioMode) return this.fail('Studio mode is not active.', 506);
+        return this.ok({ sceneName: s.previewScene, currentPreviewSceneName: s.previewScene });
+      case 'SetCurrentPreviewScene':
+        if (!s.studioMode) return this.fail('Studio mode is not active.', 506);
+        if (!s.scenes.includes(d.sceneName)) return this.fail('No source was found by the name of `' + d.sceneName + '`.');
+        s.previewScene = d.sceneName;
+        this.emit('CurrentPreviewSceneChanged', { sceneName: d.sceneName });
+        return this.ok();
+      case 'TriggerStudioModeTransition': {
+        // OBS'in varsayılanı: geçişten sonra önizleme ile program yer değiştirir.
+        if (!s.studioMode) return this.fail('Studio mode is not active.', 506);
+        const old = s.programScene;
+        s.programScene = s.previewScene;
+        s.previewScene = old;
+        this.emit('CurrentProgramSceneChanged', { sceneName: s.programScene });
+        this.emit('CurrentPreviewSceneChanged', { sceneName: s.previewScene });
+        return this.ok();
+      }
       case 'SetCurrentSceneTransition':
         if (!s.transitions.includes(d.transitionName)) return this.fail('No transition');
         s.currentTransition = d.transitionName;

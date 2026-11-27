@@ -16,11 +16,12 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ButtonEditor } from './src/components/ButtonEditor';
 import { PageTabs, TopBar } from './src/components/Chrome';
 import { DeckGrid } from './src/components/DeckGrid';
+import { PreviewSplit } from './src/components/LivePreview';
 import { MixerView } from './src/components/Mixer';
 import { ConnectSheet, PageSheet, SettingsSheet } from './src/components/Sheets';
 import { toast, ToastHost } from './src/components/ui';
 import { sceneButtons, sceneOf, sfxButtons, sfxOf } from './src/deck/defaults';
-import { newId, OBS_NAMES, type DeckButton } from './src/deck/model';
+import { newId, OBS_NAMES, pageShowsPreview, type DeckButton } from './src/deck/model';
 import { collectBindings } from './src/deck/run';
 import { syncAutoButtons, updatePage, useDeck } from './src/deck/store';
 import { obsClient } from './src/obs/client';
@@ -202,7 +203,14 @@ function Main() {
         }
       />
       <View style={styles.gridArea}>
-        {page?.kind === 'mixer' ? <MixerView editing={deckEditing} /> : page ? <DeckGrid page={page} onEditButton={onEditButton} /> : null}
+        {page?.kind === 'mixer' ? (
+          <MixerView editing={deckEditing} />
+        ) : page ? (
+          // Düzenlerken önizleme gizlenir: sürükleme için yer kalsın, gereksiz görüntü istenmesin.
+          <PreviewSplit show={!deckEditing && pageShowsPreview(page, profile)}>
+            <DeckGrid page={page} onEditButton={onEditButton} />
+          </PreviewSplit>
+        ) : null}
       </View>
       <PageTabs />
 

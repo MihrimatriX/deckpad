@@ -1,5 +1,6 @@
 import OBSWebSocket, { EventSubscription } from 'obs-websocket-js/json';
 import { initialObsState, itemKey, filterKey, setObs, useObs, type ObsStats } from './store';
+import { applyMeters, clearMeters } from './meters';
 import { isSpecialToken, SPECIAL_INPUTS } from '../deck/model';
 
 export interface ObsConfig {
@@ -60,6 +61,7 @@ class ObsController {
     clearTimeout(this.retryTimer);
     this.stopPolling();
     await this.obs.disconnect().catch(() => {});
+    clearMeters();
     setObs({ ...initialObsState });
   }
 
@@ -77,7 +79,7 @@ class ObsController {
       await withTimeout(
         this.obs.connect(`ws://${host.trim()}:${port}`, password || undefined, {
           rpcVersion: 1,
-          eventSubscriptions: EventSubscription.All,
+          eventSubscriptions: this.subscriptions(),
         }),
         7000,
         'Zaman aşımı: OBS bulunamadı',
@@ -105,6 +107,48 @@ class ObsController {
     }
   }
 
+  // ---------- Ses ölçerleri ----------
+
+  /** Ölçer olayları yüksek hacimlidir (saniyede ~20); yalnız mikser ekrandayken istenir. */
+  private metersWanted = false;
+
+  private subscriptions() {
+    return EventSubscription.All | (this.metersWanted ? EventSubscription.InputVolumeMeters : 0);
+  }
+
+  /** Mikser açılınca true, kapanınca false. Bağlıysa OBS'e aboneliği yeniden bildirir. */
+  async setMeters(on: boolean) {
+    if (this.metersWanted === on) return;
+    this.metersWanted = on;
+    if (!on) clearMeters();
+    if (!this.connected) return;
+    try {
+      await this.obs.reidentify({ eventSubscriptions: this.subscriptions() });
+    } catch {}
+  }
+
+  // ---------- Görüntüler ----------
+
+  /**
+   * Kaynakların (sahnelerin) JPEG görüntülerini tek batch'te alır: ad → data URI.
+   * Alınamayanlar (silinmiş sahne gibi) sonuçta yer almaz.
+   */
+  async screenshots(sources: string[], width: number, quality = 60): Promise<Record<string, string>> {
+    if (!this.connected || !sources.length) return {};
+    const res = await this.batch(
+      sources.map((s) => ({
+        requestType: 'GetSourceScreenshot',
+        requestData: { sourceName: s, imageFormat: 'jpg', imageWidth: Math.max(8, Math.round(width)), imageCompressionQuality: quality },
+      })),
+      false,
+    );
+    const out: Record<string, string> = {};
+    res.forEach((r, i) => {
+      if (r.requestStatus.result && r.responseData?.imageData) out[sources[i]] = r.responseData.imageData;
+    });
+    return out;
+  }
+
   /** Uygulama ön plana dönünce hemen yeniden dene. */
   nudge() {
     if (this.running && !this.connected && !this.connecting) {
@@ -126,6 +170,8 @@ class ObsController {
     const o = this.obs;
     o.on('ConnectionClosed', (err) => {
       this.stopPolling();
+      // Kopunca çubuklar son düzeyde donmasın.
+      clearMeters();
       // Bağlanma sırasındaki kopmaları connectOnce kendisi ele alır.
       if (!this.running || this.connecting) return;
       setObs({ status: 'connecting', error: err?.message || 'Bağlantı koptu' });
@@ -137,10 +183,18 @@ class ObsController {
     o.on('SceneListChanged', (e) =>
       setObs({ scenes: sortScenes(e.scenes as any[]) }),
     );
-    o.on('StudioModeStateChanged', (e) => setObs({ studioMode: e.studioModeEnabled }));
+    o.on('StudioModeStateChanged', (e) => {
+      setObs({ studioMode: e.studioModeEnabled });
+      // Stüdyo modu açılınca önizleme sahnesi olay gelmeden de belli olsun (canlı önizleme ve tuş renkleri için).
+      if (e.studioModeEnabled)
+        void this.call('GetCurrentPreviewScene')
+          .then((r: any) => setObs({ previewScene: r.sceneName ?? r.currentPreviewSceneName }))
+          .catch(() => {});
+    });
     o.on('InputMuteStateChanged', (e) =>
       setObs((s) => ({ muted: { ...s.muted, [e.inputName]: e.inputMuted } })),
     );
+    o.on('InputVolumeMeters', (e) => applyMeters(e.inputs as any));
     o.on('InputVolumeChanged', (e) =>
       setObs((s) => ({ volumes: { ...s.volumes, [e.inputName]: e.inputVolumeDb } })),
     );

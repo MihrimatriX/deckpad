@@ -6,6 +6,7 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { defaultProfile, muteButtons, sceneButtons } from '../deck/defaults';
 import { addPage, movePage, removePage, updatePage, useDeck, validateProfile } from '../deck/store';
+import { pageShowsPreview } from '../deck/model';
 import { obsClient } from '../obs/client';
 import { parseObsQr, unknownQrHint } from '../obs/qr';
 import { useObs } from '../obs/store';
@@ -362,6 +363,12 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
       <ToggleRow label="Ekranı açık tut" hint="Yayın sırasında ekran kararmasın" value={s.keepAwake} onChange={(keepAwake) => void s.save({ keepAwake })} />
       <ToggleRow label="Titreşim" value={s.haptics} onChange={(haptics) => void s.save({ haptics })} />
       <ToggleRow label="Üst bilgi çubuğu" hint="CPU, FPS, düşen kare, yayın hızı" value={s.showStats} onChange={(showStats) => void s.save({ showStats })} />
+      <ToggleRow
+        label="Canlı sahne görüntüleri"
+        hint="Sahne tuşlarında küçük resim ve canlı önizleme. Kapatınca ağ ve pil kullanımı azalır."
+        value={s.sceneThumbs}
+        onChange={(sceneThumbs) => void s.save({ sceneThumbs })}
+      />
 
       <Label>OBS'ten hızlı sayfa</Label>
       <Btn
@@ -429,6 +436,12 @@ export function PageSheet({ visible, onClose }: { visible: boolean; onClose: () 
           <Stepper label="Sütun" value={page.cols} min={1} max={8} onChange={(cols) => set({ cols })} />
           <Stepper label="Satır" value={page.rows} min={1} max={10} onChange={(rows) => set({ rows })} />
           <Hint>Satır sayısı buton boyutunu belirler; fazla butonlar kaydırılarak görünür.</Hint>
+          <ToggleRow
+            label="Canlı önizleme"
+            hint="Tuşların üstünde OBS'te yayındaki görüntü; stüdyo modunda önizleme de yanında."
+            value={pageShowsPreview(page, profile)}
+            onChange={(preview) => set({ preview })}
+          />
         </>
       )}
       <View style={styles.row}>

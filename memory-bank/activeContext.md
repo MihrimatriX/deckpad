@@ -1,6 +1,6 @@
 # Aktif bağlam
 
-**Son güncelleme**: 2026-11-26
+**Son güncelleme**: 2026-11-27
 
 ## Şu an
 
@@ -8,6 +8,7 @@
   - Kullanıcıyla kurulan plan: (1) camlink bağı ✓, (2) günlük pürüzler ve canlı geri bildirim (bilgisayar ses düzeyi tuşta, tanınmayan QR uyarısı, dikey ızgara boşluğu, kayıt/yayın süresi), (3) ses mikseri sayfası ve hazır desteler (yayın, ders, sunum), (4) S22'de uçtan uca deneme ve v1.1 sürümü.
 - **2026-11-26: plan 2. adım (günlük pürüzler) bitti**, aynı dal: bilgisayar ses tuşlarında düzey (`volume get`, contracts.md), dikey telefonda uzayan tuşlar (`deck/layout.ts`) ve iki satırlı durum ekranı (yayındaki sahne dahil), tanınmayan QR uyarısı (`obs/qr.ts` › `unknownQrHint`), `HubHost.Pair` dinlenen portu kullanır. Sırada 3. adım: ses mikseri sayfası ve hazır desteler.
 - **2026-11-26: mikser sayfası (K-023)**, aynı dal: `components/Mixer.tsx`, `deck/mixer.ts`, `useObs.volumes`. Sırada hazır desteler (yayın, ders, sunum).
+- **2026-11-27: ses ölçerleri ve canlı görüntü (K-024)**, dal `claude/project-thread-ulwtlh` (PR #1 birleşti, dal `main`'den yeniden açıldı). Kullanıcı rakip karşılaştırmasından sonra karar kartında "Ses ölçerleri ve sahne önizlemesi"ni seçti. Mikserde stereo ölçer (`obs/meters.ts`), sahne tuşlarında küçük görüntü ve Sahneler sayfasında program/önizleme görüntüsü (`obs/thumbs.ts`, `components/LivePreview.tsx`), ayar "Canlı sahne görüntüleri", sayfa ayarı "Canlı önizleme". Rakiplerdeki öteki açıklar (sırasıyla): otomasyon (tetikleyici, koşul, uzun basma; hazır desteler buraya), Twitch/YouTube sohbeti, küçükler (OBS profili/sahne koleksiyonu, geri sayım, yayın geçmişi). Gerçek telefon denemesi ve v1.1 hâlâ bekliyor.
 - K-021 (canlı otomatik sayfalar) `1d8f384`'te commit edildi.
 - **Depo herkese açık** (K-019): `MihrimatriX/deckpad`. Sürüm `v1.0.0` Releases'ta: `StudioHub.exe` (tek dosya) ve `DeckPad.apk`. İndirme sayfası GitHub Pages: https://mihrimatrix.github.io/deckpad/ (`main` › `/docs`). Bağlantılar `releases/latest/download/<ad>` biçiminde; yeni sürümde aynı adlarla yükle.
 - Commit yazarı `28717150+MihrimatriX@users.noreply.github.com` (yalnız bu depoda `git config`). İlk commit de buna yeniden yazıldı (`48923a0` → `59760de`, force-push).

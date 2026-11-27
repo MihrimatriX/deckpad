@@ -24,6 +24,8 @@ src/obs/client.ts       ObsController (tekil): bağlan (7 sn zaman aşımı), ge
                         auth hatası (4009) denemeyi durdurur, syncAll RequestBatch, olaylar, 1 sn yoklama (kayıt/yayın/istatistik)
 src/obs/store.ts        zustand: canlı OBS durumu (sahneler, girdiler, susturma, kayıt/yayın, sceneItems, filtreler)
 src/obs/qr.ts           obsws://IP:PORT/ŞİFRE çözücü
+src/obs/meters.ts       useMeters: InputVolumeMeters'tan kanal başına düzey ve tepe (dB, -60…0; tepe 20 dB/sn düşer), meterPos
+src/obs/thumbs.ts       useThumbs (sahne → JPEG data URI), useSceneThumbs (3 sn'de bir tek batch), useLiveShot (tek kaynak, 0,5 sn), useAppActive
 src/hub/client.ts       HubClient (tekil hubClient): hello/welcome, istek-id eşleme (8 sn), artan aralıkla yeniden deneme;
                         4001/4003/4029 kapanışlarında denemeyi bırakır; deckChanged dinleyicileri
 src/hub/sync.ts         startDeckSync: bağlanınca bilgisayardakini al (yoksa gönder), değişince 700 ms sonra gönder, gelen değişiklikte çek
@@ -40,12 +42,14 @@ src/deck/store.ts       deste (AsyncStorage, 250 ms gecikmeli kayıt), geri alma
 src/deck/ops.ts         saf yardımcılar, validateProfile (dışarıdan gelen desteyi doğrular)
 src/deck/mixer.ts       mikser: fader eğrisi (posToDb/dbToPos, kübik), formatDb, mixerChannels (sesi olan kaynaklar, genel aygıtlar başta)
 src/deck/layout.ts      fitGrid: ızgara yerleşimi (dikeyde tuşlar en çok 1,4 kat uzar, yatayda kare ve daha çok sütun)
-src/deck/defaults.ts    varsayılan deste: Ana, Sahneler (otomatik), Ses efektleri (otomatik), Slaytlar, Bilgisayar
+src/deck/defaults.ts    varsayılan deste: Ana, Sahneler (otomatik), Ses efektleri (otomatik), Mikser, Slaytlar, Bilgisayar
 src/settings.ts         ayarlar AsyncStorage'da; OBS şifresi ve StudioHub anahtarı SecureStore'da (web'de AsyncStorage'a düşer)
 src/theme.ts            renk ve yazı anahtarları
-src/components/         ui.tsx (Keycap, Sheet, Btn, Chip, Field…), DeckGrid (+ bağlantı kapısı), DeckButtonView, Mixer (MixerView, Fader), Chrome (TopBar,
+src/components/         ui.tsx (Keycap, Sheet, Btn, Chip, Field…), DeckGrid (+ bağlantı kapısı, sahne küçük resimleri), DeckButtonView, Mixer (MixerView, Meter, Fader),
+                        LivePreview (PreviewSplit: program/önizleme görüntüsü, "Yayına al"), Chrome (TopBar,
                         StatusDisplay, PageTabs), ButtonEditor, ActionEditor (OBS ve PC formları), Sheets (Bağlantı, Ayarlar, Sayfa)
-test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (19), hub.test.ts (12, MockHub), layout.test.ts (3), serve-mock.ts (elle deneme)
+test/                   mock-obs.ts (sahte obs-websocket v5; ölçer olayı, ekran görüntüsü, stüdyo modu geçişi), obs.test.ts (24), hub.test.ts (12, MockHub),
+                        layout.test.ts (3), serve-mock.ts (elle deneme; dalgalanan sahte ses düzeyleri)
 ```
 
 ### Kalıplar
@@ -53,6 +57,7 @@ test/                   mock-obs.ts (sahte obs-websocket v5), obs.test.ts (19), 
 - **Otomatik sayfalar OBS'i izler** (K-021): profilde `autoScenesPageId` / `autoSfxPageId` doluysa `App.tsx` › `syncAutoPage` bağlanınca ve OBS'te sahne ya da kaynak listesi değişince (`scenes`, `inputs`) çalışır; alanlar silinmez. Kural `ops.ts` › `syncAutoButtons`: yalnız eksik adlar sona eklenir, tuş silinmez; değişiklik yoksa aynı diziyi döndürür (deste yeniden kaydedilmez). Sonuç `applyRemote` ile yazılır, geri alma geçmişine girmez. "Ses Efektleri" sahnesi sahne tuşlarından çıkarılır, efektler Türkçe sıralanır.
 - **Panel modu**: `panelMode` varsa ayarlar /panel-config.json'dan gelir, `deckSync` zorla açık; başlıklar "OBS paneli" / "Masaüstü paneli".
 - **Mikser sayfası** (K-023): `DeckPage.kind === 'mixer'` ise `App.tsx` DeckGrid yerine `MixerView` çizer; tuş listesi boş kalır. Düzeyler `useObs.volumes` (dB; `syncInputs`'ta `GetInputVolume`, olay `InputVolumeChanged`). Kaydırıcı sürüklerken 60 ms'de bir `SetInputVolume` yazar, bırakınca son değeri hemen yollar.
+- **Canlı ses ve görüntü** (K-024): ölçerler yalnız mikser görünürken ve uygulama öndeyken (`MixerView` → `obsClient.setMeters(true/false)` → `reidentify` ile `InputVolumeMeters` aboneliği). Görüntüler `GetSourceScreenshot` (jpg, data URI): sahne tuşları `useSceneThumbs` ile 3 sn'de bir tek RequestBatch, önizleme `useLiveShot` ile 0,5 sn (stüdyo modunda önizleme 0,8 sn); bir tur bitmeden yenisi başlamaz. Hepsi `settings.sceneThumbs` kapalıysa, OBS bağlı değilse ya da uygulama arka plandaysa durur. Önizleme `pageShowsPreview(page, profile)`: `page.preview`, belirtilmemişse yalnız `autoScenesPageId` sayfası; düzenleme modunda gizli.
 - **Tuş durumu iki kaynaktan**: OBS tuşları `run.ts` › `buttonState` (useObs), bilgisayar ses tuşları `pcButtonState` (useHub.volume; `HubClient` bağlanınca ve `nudge`'da `volume get` ile okur). `DeckGrid.PlayButton` ikincisi null değilse onu kullanır.
 - **Bağlantı kapısı**: tuş OBS eylemi içeriyorsa OBS, pc eylemi içeriyorsa StudioHub bağlı olmalı (DeckGrid.PlayButton uyarır).
 - **Keycap**: dış görünüm (etek rengi `shade(-0.5)`) + degrade yüz; esneme `flexGrow/flexShrink` ile (flex:1 değil).

@@ -85,6 +85,7 @@ export function validateProfile(raw: any): DeckProfile {
     id: String(pg.id || newId()),
     name: String(pg.name || 'Sayfa'),
     ...(pg.kind === 'mixer' ? { kind: 'mixer' as const } : {}),
+    ...(typeof pg.preview === 'boolean' ? { preview: pg.preview } : {}),
     cols: clamp(Number(pg.cols) || 3, 1, 8),
     rows: clamp(Number(pg.rows) || 4, 1, 10),
     buttons: Array.isArray(pg.buttons)
